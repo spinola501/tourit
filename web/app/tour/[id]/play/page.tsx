@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { notFound } from "next/navigation";
 import { getTourById } from "@/lib/db/queries";
 import TourPlayer from "./TourPlayer";
