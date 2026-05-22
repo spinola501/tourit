@@ -1,0 +1,55 @@
+import { createAdminClient } from "./supabase";
+
+export async function getCityBySlug(slug: string) {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("cities")
+    .select("id, slug, name, country, emoji, cover_color, lat, lng")
+    .eq("slug", slug)
+    .single();
+  return data;
+}
+
+export async function getToursByCity(cityId: string) {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("tours")
+    .select(`
+      id, title, tagline, type, tier_required, cover_color, is_official,
+      tour_stops(count)
+    `)
+    .eq("city_id", cityId)
+    .order("created_at", { ascending: true });
+  return data ?? [];
+}
+
+export async function getTourById(tourId: string) {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("tours")
+    .select(`
+      id, title, tagline, type, tier_required, cover_color, is_official,
+      cities(slug, name, country, emoji, cover_color),
+      tour_stops(
+        order_index,
+        stops(
+          id, name, lat, lng, duration_minutes, tags, accessibility_note,
+          stop_content(category, language, text),
+          stop_practical(opening_hours, admission_fee, nearest_transport)
+        )
+      )
+    `)
+    .eq("id", tourId)
+    .single();
+  return data;
+}
+
+export async function getStopContent(stopId: string, language = "en") {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("stop_content")
+    .select("category, text, audio_url")
+    .eq("stop_id", stopId)
+    .eq("language", language);
+  return data ?? [];
+}
