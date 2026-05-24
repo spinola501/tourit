@@ -5,6 +5,55 @@ import Link from "next/link";
 import { useTier } from "@/lib/hooks/useTier";
 import type { PlayerTour, PlayerStop } from "./page";
 
+function isFreeAdmission(fee: string | null): boolean {
+  if (!fee) return false;
+  const t = fee.toLowerCase().trim();
+  return t === "free" || t.startsWith("free") || t === "€0" || t === "$0" || t === "0";
+}
+
+function ReportButton({ stopId }: { stopId: string }) {
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const REASONS = ["Info is outdated", "Wrong location", "Factual error", "Audio issue", "Other"];
+
+  async function report(reason: string) {
+    await fetch("/api/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stop_id: stopId, reason }),
+    });
+    setSent(true);
+    setOpen(false);
+  }
+
+  if (sent) return <span className="text-xs text-white/25">Thanks for reporting ✓</span>;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs text-white/25 hover:text-white/50 transition-colors"
+      >
+        Report issue
+      </button>
+      {open && (
+        <div className="absolute bottom-6 left-0 bg-[#1c1c1c] border border-white/10 rounded-xl p-2 space-y-0.5 min-w-[160px] z-20 shadow-xl">
+          {REASONS.map((r) => (
+            <button
+              key={r}
+              onClick={() => report(r)}
+              className="w-full text-left text-xs text-white/60 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   history: "History",
   architecture: "Architecture",
@@ -339,9 +388,12 @@ function NarrationPanel({ stop, activeCategory, tier, contentLength, onCategoryC
                   </div>
                 )}
                 {stop.practical.admission_fee && (
-                  <div className="flex gap-2 text-sm">
+                  <div className="flex gap-2 text-sm items-center">
                     <span className="text-white/40">🎟</span>
                     <span className="text-white/60">{stop.practical.admission_fee}</span>
+                    {isFreeAdmission(stop.practical.admission_fee) && (
+                      <span className="text-xs font-semibold text-green-400">Free</span>
+                    )}
                   </div>
                 )}
                 {stop.practical.nearest_transport && (
@@ -359,7 +411,9 @@ function NarrationPanel({ stop, activeCategory, tier, contentLength, onCategoryC
                 <p className="text-sm text-white/50">{stop.accessibility_note}</p>
               </div>
             )}
-            <div className="h-4" />
+            <div className="flex justify-end pt-2 pb-4">
+              <ReportButton stopId={stop.id} />
+            </div>
           </>
         )}
       </div>
@@ -382,29 +436,37 @@ function AudioControls({ stop, stopIndex, totalStops, isPlaying, isGenerating, p
   onNext: () => void;
 }) {
   return (
-    <div className="flex-shrink-0 border-t border-white/10 px-5 py-4 bg-[#111]">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="font-semibold text-sm">{stop.name}</p>
-          <p className="text-xs text-white/40">Stop {stopIndex + 1} of {totalStops} · {stop.duration_minutes} min</p>
-        </div>
-        <span className="text-xs text-white/30">{Math.round(progress * 100)}%</span>
+    <div className="flex-shrink-0 border-t border-white/10 px-4 py-3 bg-[#111]">
+      {/* Progress bar */}
+      <div className="h-0.5 bg-white/10 rounded-full overflow-hidden mb-3">
+        <div className="h-full bg-white/40 rounded-full transition-all duration-500" style={{ width: `${progress * 100}%` }} />
       </div>
-      <div className="h-1 bg-white/10 rounded-full overflow-hidden mb-4">
-        <div className="h-full bg-white/50 rounded-full transition-all duration-500" style={{ width: `${progress * 100}%` }} />
-      </div>
-      <div className="flex items-center justify-center gap-6">
-        <button onClick={onPrev} disabled={stopIndex === 0} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 disabled:opacity-30 transition-all text-lg">⏮</button>
+      <div className="flex items-center gap-3">
+        {/* Prev */}
+        <button onClick={onPrev} disabled={stopIndex === 0} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 disabled:opacity-30 transition-all">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        </button>
+        {/* Play/Pause */}
         <button
           onClick={isPlaying ? onPause : onPlay}
           disabled={isGenerating}
-          className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-black text-2xl hover:bg-white/90 transition-all shadow-lg disabled:opacity-60"
+          className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-black hover:bg-white/90 transition-all shadow-lg disabled:opacity-60 flex-shrink-0"
         >
           {isGenerating
-            ? <span className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-            : isPlaying ? "⏸" : "▶"}
+            ? <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            : isPlaying
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 2 }}><path d="M8 5v14l11-7z"/></svg>}
         </button>
-        <button onClick={onNext} disabled={stopIndex === totalStops - 1} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 disabled:opacity-30 transition-all text-lg">⏭</button>
+        {/* Next */}
+        <button onClick={onNext} disabled={stopIndex === totalStops - 1} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 disabled:opacity-30 transition-all">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6zm8.5 0V6h2v12z"/></svg>
+        </button>
+        {/* Stop info */}
+        <div className="flex-1 min-w-0 ml-1">
+          <p className="font-semibold text-sm truncate">{stop.name}</p>
+          <p className="text-xs text-white/40">{stopIndex + 1} / {totalStops} · {stop.duration_minutes} min</p>
+        </div>
       </div>
     </div>
   );
@@ -418,7 +480,9 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
   const [activeCategory, setActiveCategory] = useState("history");
   const [gpsMode,        setGpsMode]        = useState(false);
   const [voice,          setVoice]          = useState("bf_emma");
-  const [sidebarOpen,    setSidebarOpen]    = useState(true);
+  const [sidebarOpen,    setSidebarOpen]    = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 640 : true
+  );
   const [contentLength,  setContentLength]  = useState<ContentLength>("medium");
   const [selectedDay,    setSelectedDay]    = useState(() => new Date().getDay());
 
@@ -547,6 +611,9 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <p className="text-[10px] text-white/30">{s.duration_minutes} min</p>
                           {closed && <span className="text-[9px] text-amber-400/70">⚠ closed</span>}
+                          {isFreeAdmission(s.practical?.admission_fee ?? null) && (
+                            <span className="text-[9px] text-green-400/60">Free</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -609,7 +676,7 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
             <img
               src={currentStop.photo_url}
               alt={currentStop.name}
-              className="w-full h-36 object-cover flex-shrink-0"
+              className="w-full h-24 sm:h-36 object-cover flex-shrink-0"
             />
           )}
 
