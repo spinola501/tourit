@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useTier } from "@/lib/hooks/useTier";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import type { PlayerTour, PlayerStop } from "./page";
 
 function isFreeAdmission(fee: string | null): boolean {
@@ -487,6 +488,14 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
   const [selectedDay,    setSelectedDay]    = useState(() => new Date().getDay());
 
   const { modelState, loadProgress, isGenerating, isPlaying, progress, speak, pause, resume, stop } = useKokoro(voice);
+  const [favoriteIds, setFavoriteIds] = useState(new Set<string>());
+
+  useEffect(() => {
+    fetch("/api/favorites")
+      .then((r) => r.json())
+      .then((ids: string[]) => setFavoriteIds(new Set(ids)))
+      .catch(() => {});
+  }, []);
 
   const currentStop = tour.stops[stopIndex];
 
@@ -683,12 +692,20 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
           {/* Stop header */}
           <div className="flex-shrink-0 px-5 pt-3 pb-2 border-b border-white/10">
             <div className="flex items-start justify-between gap-2">
-              <h2 className="font-bold text-lg leading-tight">{currentStop.name}</h2>
-              {isLikelyClosed(currentStop.practical?.opening_hours ?? null, selectedDay) && (
-                <span className="text-xs text-amber-400/80 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">
-                  ⚠ May be closed {DAY_LABELS[selectedDay]}
-                </span>
-              )}
+              <h2 className="font-bold text-lg leading-tight flex-1 min-w-0">{currentStop.name}</h2>
+              <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                <FavoriteButton
+                  key={currentStop.id}
+                  stopId={currentStop.id}
+                  initialFavorited={favoriteIds.has(currentStop.id)}
+                  size="sm"
+                />
+                {isLikelyClosed(currentStop.practical?.opening_hours ?? null, selectedDay) && (
+                  <span className="text-xs text-amber-400/80 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full flex-shrink-0">
+                    ⚠ May be closed {DAY_LABELS[selectedDay]}
+                  </span>
+                )}
+              </div>
             </div>
             {currentStop.tags.length > 0 && (
               <div className="flex gap-1.5 mt-1.5 flex-wrap">

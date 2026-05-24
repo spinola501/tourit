@@ -167,11 +167,56 @@ Reference UX: the Litchfield National Park one-day guide — rich narrative, sto
 
 ---
 
+---
+
+## Session 004 — 2026-05-24
+
+**Goal:** Supabase Auth completa (email + Google OAuth), perfiles de usuario, tier en BD, NavBar con auth, UI polish, discover page real, mejoras de player móvil.
+
+### 08:30 — Auth, perfiles, NavBar y mejoras de UI
+
+- **Build fix (next/headers):** `import { cookies }` estaba al nivel del módulo en `supabase.ts`, lo que lo incluía en el bundle del middleware y de los client components (ambos entornos donde `next/headers` no está disponible). Solución: import dinámico dentro de `createServerSupabaseClient()` con `await import("next/headers")`.
+- **@supabase/ssr instalado:** Reescritura de `lib/db/supabase.ts` con `createBrowserClient`, `createServerSupabaseClient` (async, cookies server-side), `createMiddlewareClient` (req/res cookies), `createAdminClient` (service role, sin cambios).
+- **Middleware de sesión:** `web/middleware.ts` creado. Refresca el token de Supabase en cada request. Matcher excluye assets estáticos e imágenes.
+- **Página de login** (`/auth/login`): email/password + Google OAuth. Toggle sign in / sign up. Mensajes de error y confirmación. Google usa `signInWithOAuth` con redirect a `/auth/callback`.
+- **Callback OAuth** (`/auth/callback/route.ts`): intercambia code por sesión, redirige a `/profile`.
+- **Signout** (`/auth/signout/route.ts`): POST → `supabase.auth.signOut()` → redirect `/`.
+- **Tabla `public.users`:** Creada por el usuario en Supabase con trigger `on_auth_user_created` para auto-insertar perfil al registrarse. RLS habilitada con políticas de select/insert/update por `auth.uid() = id`.
+- **ProfileClient** (`/profile/ProfileClient.tsx`): nombre, ciudad de origen, 10 etiquetas de intereses (toggle). Guarda en `users` vía browser client. Muestra tier actual, enlace de upgrade si Free. `setCookieTier` sincroniza cookie al montar.
+- **NavBar** (`components/NavBar.tsx`): server component con auth. Muestra avatar (imagen o inicial) + nombre cuando está logueado. Badge `★ Pro` para usuarios Pro. "Sign in" cuando no hay sesión. NavBar conectado a home, city y tour detail pages (reemplaza navs hardcodeados).
+- **Discover page real:** Antes usaba `FEATURED_CITIES` mock. Ahora lee de Supabase con tour counts reales. Nuevo componente client `CitySearchGrid` con búsqueda en tiempo real por nombre/país. Acepta `?q=` param de la búsqueda del hero.
+- **Player móvil:** Sidebar empieza colapsada en móvil (`window.innerWidth < 640`), expandida en desktop.
+- **Badge "Free" en paradas:** Función `isFreeAdmission()` detecta entradas gratuitas. Badge verde en la lista del sidebar y junto al precio en la info práctica.
+- **Botón Report:** Componente `ReportButton` en el panel de narración. Dropdown con 5 opciones. Llama a `POST /api/report` (admin client, sin RLS issues). Se muestra "Thanks for reporting ✓" al enviar.
+- **Audio controls rediseñados:** Iconos SVG (sin emoji). Layout horizontal compacto: prev · play/pause · next · nombre y contador de parada inline. Barra de progreso slim arriba.
+- **Foto responsive:** `h-24 sm:h-36` (antes fijo `h-36`).
+
+**Ficheros creados:**
+- `web/middleware.ts` — Refresco de sesión Supabase en cada request
+- `web/app/auth/login/page.tsx` — Login con email + Google OAuth
+- `web/app/auth/callback/route.ts` — Intercambio de code OAuth por sesión
+- `web/app/auth/signout/route.ts` — POST signout → redirect /
+- `web/app/profile/ProfileClient.tsx` — Formulario de perfil: nombre, ciudad, intereses, plan
+- `web/components/NavBar.tsx` — NavBar server component con auth state
+- `web/app/discover/CitySearchGrid.tsx` — Grid de ciudades con búsqueda client-side
+- `web/app/api/report/route.ts` — POST /api/report → insert en stop_reports via admin client
+
+**Ficheros modificados:**
+- `web/lib/db/supabase.ts` — Reescrito para @supabase/ssr; import dinámico de next/headers
+- `web/app/page.tsx` — NavBar conectado (reemplaza nav hardcodeado)
+- `web/app/city/[slug]/page.tsx` — NavBar conectado
+- `web/app/tour/[id]/page.tsx` — NavBar conectado + back link al city en hero
+- `web/app/profile/page.tsx` — Server component real (antes stub)
+- `web/app/discover/page.tsx` — Supabase real + NavBar + CitySearchGrid
+- `web/app/tour/[id]/play/TourPlayer.tsx` — Sidebar móvil, badge Free, ReportButton, audio controls SVG, foto responsive
+
+---
+
 ## Pendiente para próxima sesión
-- [ ] Transferir proyecto Vercel de cspinola1 a spinola501
+- [ ] Ejecutar SQL en Supabase: `UPDATE public.users SET tier = 'pro' WHERE email = 'spinola501@gmail.com';`
+- [ ] Favoritos: guardar paradas y tours (tabla user_favorites + botón en player y tour detail)
+- [ ] Recomendaciones personalizadas en home basadas en intereses del perfil
+- [ ] GPS geofencing: Geolocation API + auto-play por proximidad en el player web
 - [ ] Dominio: registrar tourit.app o tourit.guide
-- [ ] Fotos de paradas: Wikimedia Commons API en el pipeline de seed
-- [ ] GPS geofencing: Geolocation API + proximidad a paradas en web player
-- [ ] Supabase Auth (Phase 3 start)
-- [ ] Walking vs driving mode (Phase 4 preview)
-- [ ] Reparar duplicados de London si los hay (botón Repair en /admin)
+- [ ] Reparar duplicados de London (botón Repair en /admin si es necesario)
+- [ ] Paris, Rome, NYC: añadir al seed para completar ciudades Tier 1

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 const CATEGORY_LABELS: Record<string, string> = {
   history: "History",
@@ -27,7 +28,7 @@ export type PreviewStop = {
   practical: { opening_hours: string | null; admission_fee: string | null; nearest_transport: string | null } | null;
 };
 
-export function StopPreviewCard({ stop, index }: { stop: PreviewStop; index: number }) {
+export function StopPreviewCard({ stop, index, initialFavorited = false }: { stop: PreviewStop; index: number; initialFavorited?: boolean }) {
   const [open, setOpen]           = useState(false);
   const [activeCategory, setActive] = useState(stop.content[0]?.category ?? "history");
 
@@ -46,8 +47,9 @@ export function StopPreviewCard({ stop, index }: { stop: PreviewStop; index: num
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
             <h3 className="font-semibold">{stop.name}</h3>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-xs text-white/40">⏱ {stop.duration_minutes} min</span>
+              <FavoriteButton stopId={stop.id} initialFavorited={initialFavorited} size="sm" />
               <span className="text-white/30 text-xs">{open ? "▲" : "▼"}</span>
             </div>
           </div>

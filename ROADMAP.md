@@ -71,15 +71,17 @@ An AI-powered audio tour app that researches and narrates the story of any place
 ## Phase 3 — Auth, Profiles & Freshness ✦ Current
 **Goal:** Users can sign in, set preferences, save tours. Practical info stays fresh automatically.
 
-- [ ] Supabase Auth (email + Google OAuth)
-- [ ] User profile: name, home city, language preference, group profile defaults
+- [x] Supabase Auth (email + Google OAuth)
+- [x] User profile: name, home city, interest tags, tier display
+- [x] Interest tags on profile (10 categories) — stored in public.users.interests[]
+- [x] Free activities filter — badge "Free" on stops in player sidebar + practical info card
+- [x] Free tier category gating — History/Fun Facts/Practical free; all 11 for Pro
+- [x] User report button in player ("Report issue" → 5-option dropdown → POST /api/report)
+- [ ] Save / favourite stops and tours (user_favorites table + heart button)
+- [ ] Personalised recommendations on home page based on profile interests
 - [ ] Group profile: mobility (full/seniors/wheelchair/stroller), ages, pace
-- [ ] Interest tags on profile (history, architecture, food…) → personalised tour recommendations
-- [ ] Free activities filter (parse admission_fee, badge free stops, profile pref)
-- [ ] Save / favourite stops and tours
-- [ ] Free tier limits enforced in middleware (categories gated, max 3 saved tours)
+- [ ] Free tier limits: max 3 saved tours enforced
 - [ ] `last_verified_at` shown on practical info in player
-- [ ] User report button in player ("Something wrong here?" → dropdown)
 - [ ] Google Places API cron job — weekly re-fetch of practical info for all stops
 - [ ] Wikipedia change detection — flag stops whose articles changed for narration review
 - [ ] Admin dashboard: review flagged stops, one-click regenerate, resolve reports
@@ -143,7 +145,7 @@ An AI-powered audio tour app that researches and narrates the story of any place
 - [ ] Marketing site (landing page, pricing, demo video)
 - [ ] Analytics dashboard (Posthog)
 - [ ] Error monitoring (Sentry)
-- [x] Vercel deployment (web) — live at https://web-cspinola1s-projects.vercel.app (transfer to spinola501 + custom domain pending)
+- [x] Vercel deployment (web) — live at https://tourit-sigma.vercel.app (under spinola501, auto-deploys on push)
 - [ ] EAS deployment (mobile)
 
 ---

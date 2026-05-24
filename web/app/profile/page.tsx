@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/db/supabase";
-import { createAdminClient } from "@/lib/db/supabase";
+import { createServerSupabaseClient, createAdminClient } from "@/lib/db/supabase";
 import ProfileClient from "./ProfileClient";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 export default async function ProfilePage() {
   const supabase = await createServerSupabaseClient();
@@ -14,11 +14,18 @@ export default async function ProfilePage() {
 
   // Fetch extended profile from public.users
   const db = createAdminClient();
-  const { data: profile } = await db
-    .from("users")
-    .select("name, avatar_url, tier, home_city, interests")
-    .eq("id", user.id)
-    .single();
+  const [profileResult, favoritesResult] = await Promise.all([
+    db.from("users").select("name, avatar_url, tier, home_city, interests").eq("id", user.id).single(),
+    db.from("user_favorites")
+      .select("stop_id, stops(id, name, duration_minutes)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+  const profile = profileResult.data;
+  const savedStops = (favoritesResult.data ?? [])
+    .flatMap((r) => (Array.isArray(r.stops) ? r.stops : r.stops ? [r.stops] : []))
+    .filter(Boolean) as { id: string; name: string; duration_minutes: number }[];
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white">
@@ -30,6 +37,25 @@ export default async function ProfilePage() {
           </button>
         </form>
       </nav>
+
+      {savedStops.length > 0 && (
+        <section className="max-w-2xl mx-auto px-6 pb-2">
+          <div className="rounded-2xl border border-white/10 p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40 mb-4">Saved Stops</h2>
+            <div className="space-y-2">
+              {savedStops.map((s) => (
+                <div key={s.id} className="flex items-center justify-between gap-3 py-1.5">
+                  <div>
+                    <p className="text-sm font-medium text-white">{s.name}</p>
+                    <p className="text-xs text-white/40">{s.duration_minutes} min</p>
+                  </div>
+                  <FavoriteButton stopId={s.id} initialFavorited={true} size="sm" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <ProfileClient
         user={{

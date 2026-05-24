@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getTourById } from "@/lib/db/queries";
 import { StopPreviewCard } from "./StopPreviewCard";
 import { NavBar } from "@/components/NavBar";
+import { createServerSupabaseClient, createAdminClient } from "@/lib/db/supabase";
 
 const CATEGORY_LABELS: Record<string, string> = {
   history: "History",
@@ -25,6 +26,19 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const tour = await getTourById(id);
   if (!tour) notFound();
+
+  // Fetch user favorites to pre-populate heart buttons
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let favoriteIds = new Set<string>();
+  if (user) {
+    const db = createAdminClient();
+    const { data: favs } = await db
+      .from("user_favorites")
+      .select("stop_id")
+      .eq("user_id", user.id);
+    favoriteIds = new Set(favs?.map((r) => r.stop_id) ?? []);
+  }
 
   const city = tour.cities as unknown as { slug: string; name: string; country: string; emoji: string; cover_color: string } | null;
   const coverColor = tour.cover_color ?? "#1a3a5c";
@@ -119,6 +133,7 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
                 <StopPreviewCard
                   key={stop.id}
                   index={i}
+                  initialFavorited={favoriteIds.has(stop.id)}
                   stop={{
                     id: stop.id,
                     name: stop.name,
