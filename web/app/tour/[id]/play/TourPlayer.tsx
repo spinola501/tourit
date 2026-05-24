@@ -111,20 +111,22 @@ function isLikelyClosed(openingHours: string | null, dayIndex: number): boolean 
   ].some((p) => t.includes(p));
 }
 
-// ─── Kokoro TTS hook ──────────────────────────────────────────────────────────
+// ─── Kokoro TTS hook (with Web Speech API fallback) ───────────────────────────
 
 type ModelState = "idle" | "loading" | "ready" | "error";
 
 function useKokoro(voice: string) {
-  const [modelState, setModelState]   = useState<ModelState>("idle");
+  const [modelState,   setModelState]   = useState<ModelState>("idle");
   const [loadProgress, setLoadProgress] = useState(0);
-  const [errorKind, setErrorKind]     = useState<"headers" | "network" | "unknown">("unknown");
+  const [usingFallback, setUsingFallback] = useState(false);
+  const [retryCount,   setRetryCount]   = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isPlaying, setIsPlaying]     = useState(false);
-  const [progress, setProgress]       = useState(0);
+  const [isPlaying,    setIsPlaying]    = useState(false);
+  const [progress,     setProgress]     = useState(0);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ttsRef       = useRef<any>(null);
+  const fallbackRef  = useRef(false);   // mirror of usingFallback for callbacks
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const sourceRef    = useRef<AudioBufferSourceNode | null>(null);
   const cacheRef     = useRef(new Map<string, Float32Array>());
@@ -134,10 +136,14 @@ function useKokoro(voice: string) {
   const durationRef  = useRef(0);
   const genIdRef     = useRef(0);
 
+  // Load Kokoro; on failure, fall back to Web Speech API automatically
   useEffect(() => {
+    if (fallbackRef.current) return;
     let cancelled = false;
+    ttsRef.current = null;
+    setModelState("loading");
+    setLoadProgress(0);
     (async () => {
-      setModelState("loading");
       try {
         const { KokoroTTS } = await import("kokoro-js");
         const tts = await KokoroTTS.from_pretrained("onnx-community/Kokoro-82M-v1.0", {
@@ -150,21 +156,23 @@ function useKokoro(voice: string) {
         });
         if (!cancelled) { ttsRef.current = tts; setModelState("ready"); }
       } catch (err) {
+        console.error("[Kokoro]", err);
         if (!cancelled) {
-          const msg = String(err);
-          const kind = msg.includes("SharedArrayBuffer") ? "headers"
-            : (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed to fetch")) ? "network"
-            : "unknown";
-          setErrorKind(kind);
-          setModelState("error");
-          console.error("[Kokoro]", err);
+          if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            fallbackRef.current = true;
+            setUsingFallback(true);
+            setModelState("ready");
+          } else {
+            setModelState("error");
+          }
         }
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [retryCount]);
 
-  const stopAudio = useCallback(() => {
+  // ── Kokoro audio helpers ──
+  const stopKokoro = useCallback(() => {
     try { sourceRef.current?.stop(); } catch { /* already stopped */ }
     sourceRef.current = null;
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -173,10 +181,37 @@ function useKokoro(voice: string) {
     setProgress(0);
   }, []);
 
+  // ── Web Speech API helpers ──
+  const stopFallback = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+    setProgress(0);
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    if (fallbackRef.current) stopFallback(); else stopKokoro();
+  }, [stopFallback, stopKokoro]);
+
   const speak = useCallback(async (text: string) => {
-    if (!ttsRef.current || modelState !== "ready") return;
+    if (modelState !== "ready") return;
+
+    // ── Web Speech API path ──
+    if (fallbackRef.current) {
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = "en-GB";
+      utt.rate = 0.88;
+      utt.onstart  = () => { setIsPlaying(true); setProgress(0); };
+      utt.onend    = () => { setIsPlaying(false); setProgress(1); };
+      utt.onerror  = () => { setIsPlaying(false); };
+      window.speechSynthesis.speak(utt);
+      return;
+    }
+
+    // ── Kokoro path ──
+    if (!ttsRef.current) return;
     const id = ++genIdRef.current;
-    stopAudio();
+    stopKokoro();
     setIsGenerating(true);
     try {
       const key = `${voice}::${text}`;
@@ -195,16 +230,14 @@ function useKokoro(voice: string) {
       if (audioCtxRef.current.state === "suspended")
         await audioCtxRef.current.resume();
 
-      const buf    = audioCtxRef.current.createBuffer(1, audio.length, 24000);
+      const buf = audioCtxRef.current.createBuffer(1, audio.length, 24000);
       buf.getChannelData(0).set(audio);
       const source = audioCtxRef.current.createBufferSource();
       source.buffer = buf;
       source.connect(audioCtxRef.current.destination);
-
       durationRef.current  = buf.duration * 1000;
       startTimeRef.current = Date.now();
       pauseOffRef.current  = 0;
-
       source.onended = () => {
         if (intervalRef.current) clearInterval(intervalRef.current);
         sourceRef.current = null;
@@ -221,9 +254,14 @@ function useKokoro(voice: string) {
     } catch {
       if (genIdRef.current === id) { setIsGenerating(false); setIsPlaying(false); }
     }
-  }, [modelState, voice, stopAudio]);
+  }, [modelState, voice, stopKokoro]);
 
   const pause = useCallback(async () => {
+    if (fallbackRef.current) {
+      window.speechSynthesis.pause();
+      setIsPlaying(false);
+      return;
+    }
     if (audioCtxRef.current?.state === "running") {
       pauseOffRef.current = Date.now() - startTimeRef.current;
       await audioCtxRef.current.suspend();
@@ -233,6 +271,11 @@ function useKokoro(voice: string) {
   }, []);
 
   const resumeAudio = useCallback(async () => {
+    if (fallbackRef.current) {
+      window.speechSynthesis.resume();
+      setIsPlaying(true);
+      return;
+    }
     if (audioCtxRef.current?.state === "suspended") {
       await audioCtxRef.current.resume();
       startTimeRef.current = Date.now() - pauseOffRef.current;
@@ -243,15 +286,31 @@ function useKokoro(voice: string) {
     }
   }, []);
 
-  useEffect(() => () => { stopAudio(); audioCtxRef.current?.close(); }, [stopAudio]);
+  const retry = useCallback(() => {
+    fallbackRef.current = false;
+    setUsingFallback(false);
+    setRetryCount((c) => c + 1);
+  }, []);
 
-  return { modelState, loadProgress, errorKind, isGenerating, isPlaying, progress, speak, pause, resume: resumeAudio, stop: stopAudio };
+  useEffect(() => () => { stopKokoro(); audioCtxRef.current?.close(); }, [stopKokoro]);
+
+  return { modelState, loadProgress, usingFallback, isGenerating, isPlaying, progress, speak, pause, resume: resumeAudio, stop: stopAudio, retry };
 }
 
 // ─── Model loading banner ─────────────────────────────────────────────────────
 
-function ModelLoadingBanner({ state, progress, errorKind }: { state: ModelState; progress: number; errorKind: "headers" | "network" | "unknown" }) {
-  if (state === "ready") return null;
+function ModelLoadingBanner({ state, progress, usingFallback, onRetry }: {
+  state: ModelState; progress: number; usingFallback: boolean; onRetry: () => void;
+}) {
+  if (state === "ready" && !usingFallback) return null;
+  if (state === "ready" && usingFallback) return (
+    <div className="flex-shrink-0 border-b border-amber-500/20 px-5 py-2 bg-amber-500/5 flex items-center justify-between gap-4">
+      <p className="text-xs text-amber-400/70">Using browser voice — tap Retry to load premium audio.</p>
+      <button onClick={onRetry} className="text-xs text-white/50 hover:text-white px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0">
+        Retry
+      </button>
+    </div>
+  );
   return (
     <div className="flex-shrink-0 border-b border-white/10 px-5 py-2.5 bg-white/[0.04]">
       {state === "loading" ? (
@@ -268,17 +327,7 @@ function ModelLoadingBanner({ state, progress, errorKind }: { state: ModelState;
         </div>
       ) : state === "error" ? (
         <div className="flex items-center justify-between gap-4">
-          <p className="text-xs text-red-400/70">
-            {errorKind === "headers"
-              ? "Security headers missing — reload the page to try again."
-              : "Voice engine failed to load — check your connection."}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-xs text-white/60 hover:text-white px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0"
-          >
-            Reload
-          </button>
+          <p className="text-xs text-red-400/70">Voice engine unavailable — no audio supported on this browser.</p>
         </div>
       ) : null}
     </div>
@@ -508,7 +557,7 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
   const [contentLength,  setContentLength]  = useState<ContentLength>("medium");
   const [selectedDay,    setSelectedDay]    = useState(() => new Date().getDay());
 
-  const { modelState, loadProgress, errorKind, isGenerating, isPlaying, progress, speak, pause, resume, stop } = useKokoro(voice);
+  const { modelState, loadProgress, usingFallback, isGenerating, isPlaying, progress, speak, pause, resume, stop, retry } = useKokoro(voice);
   const [favoriteIds, setFavoriteIds] = useState(new Set<string>());
 
   useEffect(() => {
@@ -585,7 +634,7 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
       </div>
 
       {/* Model loading banner */}
-      <ModelLoadingBanner state={modelState} progress={loadProgress} errorKind={errorKind} />
+      <ModelLoadingBanner state={modelState} progress={loadProgress} usingFallback={usingFallback} onRetry={retry} />
 
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
