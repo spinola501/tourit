@@ -28,23 +28,23 @@ function ReportButton({ stopId }: { stopId: string }) {
     setOpen(false);
   }
 
-  if (sent) return <span className="text-xs text-white/25">Thanks for reporting ✓</span>;
+  if (sent) return <span className="text-xs text-slate-400 dark:text-white/25">Thanks for reporting ✓</span>;
 
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="text-xs text-white/25 hover:text-white/50 transition-colors"
+        className="text-xs text-slate-400 dark:text-white/25 hover:text-slate-600 dark:hover:text-white/50 transition-colors"
       >
         Report issue
       </button>
       {open && (
-        <div className="absolute bottom-6 left-0 bg-[#1c1c1c] border border-white/10 rounded-xl p-2 space-y-0.5 min-w-[160px] z-20 shadow-xl">
+        <div className="absolute bottom-6 left-0 bg-white dark:bg-[#1c1c1c] border border-slate-200 dark:border-white/10 rounded-xl p-2 space-y-0.5 min-w-[160px] z-20 shadow-xl">
           {REASONS.map((r) => (
             <button
               key={r}
               onClick={() => report(r)}
-              className="w-full text-left text-xs text-white/60 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
+              className="w-full text-left text-xs text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
             >
               {r}
             </button>
@@ -86,12 +86,20 @@ const VOICES = [
 
 type ContentLength = "short" | "medium" | "full";
 
+// Truncate to approximate word count, snapping to the nearest sentence boundary
 function applyLength(text: string, length: ContentLength): string {
   if (length === "full") return text;
   const words = text.split(/\s+/);
-  const max = length === "short" ? 120 : 300;
-  if (words.length <= max) return text;
-  return words.slice(0, max).join(" ") + "…";
+  const maxWords = length === "short" ? 100 : 280;
+  if (words.length <= maxWords) return text;
+  const rough = words.slice(0, maxWords).join(" ");
+  const lastStop = Math.max(
+    rough.lastIndexOf(". "),
+    rough.lastIndexOf("! "),
+    rough.lastIndexOf("? ")
+  );
+  if (lastStop >= rough.length * 0.55) return rough.slice(0, lastStop + 1);
+  return rough + "…";
 }
 
 // ─── Day-of-week helpers ──────────────────────────────────────────────────────
@@ -126,7 +134,7 @@ function useKokoro(voice: string) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ttsRef       = useRef<any>(null);
-  const fallbackRef  = useRef(false);   // mirror of usingFallback for callbacks
+  const fallbackRef  = useRef(false);
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const sourceRef    = useRef<AudioBufferSourceNode | null>(null);
   const cacheRef     = useRef(new Map<string, Float32Array>());
@@ -316,29 +324,29 @@ function ModelLoadingBanner({ state, progress, usingFallback, onRetry }: {
   if (state === "ready" && !usingFallback) return null;
   if (state === "ready" && usingFallback) return (
     <div className="flex-shrink-0 border-b border-amber-500/20 px-5 py-2 bg-amber-500/5 flex items-center justify-between gap-4">
-      <p className="text-xs text-amber-400/70">Using browser voice — tap Retry to load premium audio.</p>
-      <button onClick={onRetry} className="text-xs text-white/50 hover:text-white px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0">
+      <p className="text-xs text-amber-600 dark:text-amber-400/70">Using browser voice — tap Retry to load premium audio.</p>
+      <button onClick={onRetry} className="text-xs text-slate-600 dark:text-white/50 hover:text-slate-900 dark:hover:text-white px-3 py-1 rounded-lg bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors flex-shrink-0">
         Retry
       </button>
     </div>
   );
   return (
-    <div className="flex-shrink-0 border-b border-white/10 px-5 py-2.5 bg-white/[0.04]">
+    <div className="flex-shrink-0 border-b border-slate-200 dark:border-white/10 px-5 py-2.5 bg-slate-50 dark:bg-white/[0.04]">
       {state === "loading" ? (
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-white/50">Loading voice engine… (~40 MB, one-time)</p>
-              <p className="text-xs text-white/30">{Math.round(progress * 100)}%</p>
+              <p className="text-xs text-slate-500 dark:text-white/50">Loading voice engine… (~40 MB, one-time)</p>
+              <p className="text-xs text-slate-400 dark:text-white/30">{Math.round(progress * 100)}%</p>
             </div>
-            <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-white/40 rounded-full transition-all duration-300" style={{ width: `${progress * 100}%` }} />
+            <div className="h-0.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-slate-500 dark:bg-white/40 rounded-full transition-all duration-300" style={{ width: `${progress * 100}%` }} />
             </div>
           </div>
         </div>
       ) : state === "error" ? (
         <div className="flex items-center justify-between gap-4">
-          <p className="text-xs text-red-400/70">Voice engine unavailable — no audio supported on this browser.</p>
+          <p className="text-xs text-red-500 dark:text-red-400/70">Voice engine unavailable — no audio supported on this browser.</p>
         </div>
       ) : null}
     </div>
@@ -349,15 +357,17 @@ function ModelLoadingBanner({ state, progress, usingFallback, onRetry }: {
 
 function DaySelector({ selected, onChange }: { selected: number; onChange: (d: number) => void }) {
   return (
-    <div className="px-3 py-2 border-t border-white/10">
-      <p className="text-[9px] text-white/25 uppercase tracking-widest mb-1.5">Visiting day</p>
+    <div className="px-3 py-2 border-t border-slate-200 dark:border-white/10">
+      <p className="text-[9px] text-slate-400 dark:text-white/25 uppercase tracking-widest mb-1.5">Visiting day</p>
       <div className="flex gap-0.5">
         {DAY_LABELS.map((lbl, i) => (
           <button
             key={i}
             onClick={() => onChange(i)}
             className={`flex-1 text-[9px] py-1 rounded transition-colors ${
-              i === selected ? "bg-white text-black font-bold" : "bg-white/10 text-white/40 hover:bg-white/20"
+              i === selected
+                ? "bg-slate-800 dark:bg-white text-white dark:text-black font-bold"
+                : "bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/40 hover:bg-slate-200 dark:hover:bg-white/20"
             }`}
           >
             {lbl[0]}
@@ -372,14 +382,16 @@ function DaySelector({ selected, onChange }: { selected: number; onChange: (d: n
 
 function ContentLengthPicker({ value, onChange }: { value: ContentLength; onChange: (v: ContentLength) => void }) {
   return (
-    <div className="flex items-center gap-1 px-4 py-1.5 border-b border-white/[0.06] flex-shrink-0">
-      <span className="text-[10px] text-white/25 mr-1">Length</span>
+    <div className="flex items-center gap-1 px-4 py-1.5 border-b border-slate-100 dark:border-white/[0.06] flex-shrink-0">
+      <span className="text-[10px] text-slate-400 dark:text-white/25 mr-1">Length</span>
       {(["short", "medium", "full"] as ContentLength[]).map((opt) => (
         <button
           key={opt}
           onClick={() => onChange(opt)}
           className={`text-[10px] px-2.5 py-0.5 rounded-full capitalize transition-colors ${
-            value === opt ? "bg-white/20 text-white font-semibold" : "text-white/30 hover:text-white/60"
+            value === opt
+              ? "bg-slate-200 dark:bg-white/20 text-slate-900 dark:text-white font-semibold"
+              : "text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/60"
           }`}
         >
           {opt === "short" ? "Short" : opt === "medium" ? "Medium" : "Full"}
@@ -398,7 +410,7 @@ function CategoryTabs({ categories, activeCategory, tier, onChange }: {
   onChange: (cat: string) => void;
 }) {
   return (
-    <div className="flex gap-1.5 overflow-x-auto px-4 pt-2.5 pb-2 flex-shrink-0 border-b border-white/10" style={{ scrollbarWidth: "none" }}>
+    <div className="flex gap-1.5 overflow-x-auto px-4 pt-2.5 pb-2 flex-shrink-0 border-b border-slate-200 dark:border-white/10" style={{ scrollbarWidth: "none" }}>
       {categories.map((cat) => {
         const locked = tier === "free" && !FREE_CATEGORIES.has(cat);
         const active = cat === activeCategory;
@@ -408,9 +420,11 @@ function CategoryTabs({ categories, activeCategory, tier, onChange }: {
             onClick={() => !locked && onChange(cat)}
             title={locked ? "Pro feature — upgrade to unlock" : undefined}
             className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 ${
-              active  ? "bg-white text-black font-semibold"
-              : locked ? "bg-white/5 text-white/25 cursor-default"
-              : "bg-white/10 text-white/50 hover:bg-white/20"
+              active
+                ? "bg-slate-800 dark:bg-white text-white dark:text-black font-semibold"
+                : locked
+                ? "bg-slate-100 dark:bg-white/5 text-slate-300 dark:text-white/25 cursor-default"
+                : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/50 hover:bg-slate-200 dark:hover:bg-white/20"
             }`}
           >
             {locked && <span className="text-[9px]">🔒</span>}
@@ -424,18 +438,24 @@ function CategoryTabs({ categories, activeCategory, tier, onChange }: {
 
 // ─── Narration panel ──────────────────────────────────────────────────────────
 
-function NarrationPanel({ stop, activeCategory, tier, contentLength, onCategoryChange, onLengthChange }: {
+// Only show categories that have at least 40 words of content
+const MIN_WORDS_TO_SHOW = 40;
+
+function NarrationPanel({ stop, activeCategory, tier, contentLength, coverColor, onCategoryChange, onLengthChange }: {
   stop: PlayerStop;
   activeCategory: string;
   tier: "free" | "pro";
   contentLength: ContentLength;
+  coverColor: string;
   onCategoryChange: (cat: string) => void;
   onLengthChange: (v: ContentLength) => void;
 }) {
-  const categories = Object.keys(stop.content);
-  const locked     = tier === "free" && !FREE_CATEGORIES.has(activeCategory);
-  const rawText    = stop.content[activeCategory] ?? "";
-  const text       = applyLength(rawText, contentLength);
+  const categories = Object.keys(stop.content).filter(
+    (cat) => (stop.content[cat]?.trim().split(/\s+/).length ?? 0) >= MIN_WORDS_TO_SHOW
+  );
+  const locked  = tier === "free" && !FREE_CATEGORIES.has(activeCategory);
+  const rawText = stop.content[activeCategory] ?? "";
+  const text    = applyLength(rawText, contentLength);
 
   return (
     <div className="flex flex-col h-full">
@@ -445,52 +465,54 @@ function NarrationPanel({ stop, activeCategory, tier, contentLength, onCategoryC
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
         {locked ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <div className="text-4xl mb-4">★</div>
-            <h3 className="font-bold text-lg mb-2">Pro Feature</h3>
-            <p className="text-white/50 text-sm mb-6 max-w-xs">
+            <div className="text-4xl mb-4" style={{ color: coverColor }}>★</div>
+            <h3 className="font-bold text-lg mb-2 text-slate-900 dark:text-white">Pro Feature</h3>
+            <p className="text-slate-500 dark:text-white/50 text-sm mb-6 max-w-xs">
               {CATEGORY_LABELS[activeCategory]} narration is available on the Pro plan.
             </p>
-            <Link href="/account" className="bg-white text-black px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-colors">
+            <Link href="/account" className="bg-slate-900 dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity">
               Upgrade to Pro
             </Link>
           </div>
         ) : (
           <>
-            {text.split("\n\n").map((para, i) => (
-              <p key={i} className="text-white/75 leading-relaxed text-[15px]">{para}</p>
-            ))}
+            {text ? text.split("\n\n").map((para, i) => (
+              <p key={i} className="text-slate-700 dark:text-white/75 leading-relaxed text-[15px]">{para}</p>
+            )) : (
+              <p className="text-slate-400 dark:text-white/30 text-sm italic">No content available for this category.</p>
+            )}
 
             {stop.practical && activeCategory !== "practical" && (
-              <div className="rounded-xl border border-white/10 p-4 space-y-2 mt-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-2">Practical Info</p>
+              <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-2 mt-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-white/40 mb-2">Practical Info</p>
                 {stop.practical.opening_hours && (
                   <div className="flex gap-2 text-sm">
-                    <span className="text-white/40">⏰</span>
-                    <span className="text-white/60">{stop.practical.opening_hours}</span>
+                    <span className="text-slate-400 dark:text-white/40">⏰</span>
+                    <span className="text-slate-600 dark:text-white/60">{stop.practical.opening_hours}</span>
                   </div>
                 )}
                 {stop.practical.admission_fee && (
                   <div className="flex gap-2 text-sm items-center">
-                    <span className="text-white/40">🎟</span>
-                    <span className="text-white/60">{stop.practical.admission_fee}</span>
+                    <span className="text-slate-400 dark:text-white/40">🎟</span>
+                    <span className="text-slate-600 dark:text-white/60">{stop.practical.admission_fee}</span>
                     {isFreeAdmission(stop.practical.admission_fee) && (
-                      <span className="text-xs font-semibold text-green-400">Free</span>
+                      <span className="text-xs font-semibold text-green-600 dark:text-green-400">Free</span>
                     )}
                   </div>
                 )}
                 {stop.practical.nearest_transport && (
                   <div className="flex gap-2 text-sm">
-                    <span className="text-white/40">🚇</span>
-                    <span className="text-white/60">{stop.practical.nearest_transport}</span>
+                    <span className="text-slate-400 dark:text-white/40">🚇</span>
+                    <span className="text-slate-600 dark:text-white/60">{stop.practical.nearest_transport}</span>
                   </div>
                 )}
               </div>
             )}
 
             {stop.accessibility_note && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 mt-2">
-                <p className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-2">Accessibility</p>
-                <p className="text-sm text-white/50">{stop.accessibility_note}</p>
+              <div className="rounded-xl border border-slate-100 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] p-4 mt-2">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-white/40 mb-2">Accessibility</p>
+                <p className="text-sm text-slate-500 dark:text-white/50">{stop.accessibility_note}</p>
               </div>
             )}
             <div className="flex justify-end pt-2 pb-4">
@@ -518,36 +540,36 @@ function AudioControls({ stop, stopIndex, totalStops, isPlaying, isGenerating, p
   onNext: () => void;
 }) {
   return (
-    <div className="flex-shrink-0 border-t border-white/10 px-4 py-3 bg-[#111]">
+    <div className="flex-shrink-0 border-t border-slate-200 dark:border-white/10 px-4 py-3 bg-white dark:bg-[#111]">
       {/* Progress bar */}
-      <div className="h-0.5 bg-white/10 rounded-full overflow-hidden mb-3">
-        <div className="h-full bg-white/40 rounded-full transition-all duration-500" style={{ width: `${progress * 100}%` }} />
+      <div className="h-0.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden mb-3">
+        <div className="h-full bg-slate-600 dark:bg-white/40 rounded-full transition-all duration-500" style={{ width: `${progress * 100}%` }} />
       </div>
       <div className="flex items-center gap-3">
         {/* Prev */}
-        <button onClick={onPrev} disabled={stopIndex === 0} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 disabled:opacity-30 transition-all">
+        <button onClick={onPrev} disabled={stopIndex === 0} className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/20 disabled:opacity-30 transition-all">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
         </button>
         {/* Play/Pause */}
         <button
           onClick={isPlaying ? onPause : onPlay}
           disabled={isGenerating}
-          className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-black hover:bg-white/90 transition-all shadow-lg disabled:opacity-60 flex-shrink-0"
+          className="w-14 h-14 rounded-full bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-black hover:opacity-90 transition-all shadow-lg disabled:opacity-60 flex-shrink-0"
         >
           {isGenerating
-            ? <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            ? <span className="w-4 h-4 border-2 border-white/30 dark:border-black/30 border-t-white dark:border-t-black rounded-full animate-spin" />
             : isPlaying
               ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
               : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 2 }}><path d="M8 5v14l11-7z"/></svg>}
         </button>
         {/* Next */}
-        <button onClick={onNext} disabled={stopIndex === totalStops - 1} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 disabled:opacity-30 transition-all">
+        <button onClick={onNext} disabled={stopIndex === totalStops - 1} className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/20 disabled:opacity-30 transition-all">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6zm8.5 0V6h2v12z"/></svg>
         </button>
         {/* Stop info */}
         <div className="flex-1 min-w-0 ml-1">
-          <p className="font-semibold text-sm truncate">{stop.name}</p>
-          <p className="text-xs text-white/40">{stopIndex + 1} / {totalStops} · {stop.duration_minutes} min</p>
+          <p className="font-semibold text-sm truncate text-slate-900 dark:text-white">{stop.name}</p>
+          <p className="text-xs text-slate-400 dark:text-white/40">{stopIndex + 1} / {totalStops} · {stop.duration_minutes} min</p>
         </div>
       </div>
     </div>
@@ -567,6 +589,10 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
   );
   const [contentLength,  setContentLength]  = useState<ContentLength>("medium");
   const [selectedDay,    setSelectedDay]    = useState(() => new Date().getDay());
+  const [isDark,         setIsDark]         = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("player-theme") !== "light";
+  });
 
   const { modelState, loadProgress, usingFallback, isGenerating, isPlaying, progress, speak, pause, resume, stop, retry } = useKokoro(voice);
   const [favoriteIds, setFavoriteIds] = useState(new Set<string>());
@@ -578,9 +604,14 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
       .catch(() => {});
   }, []);
 
+  function toggleTheme() {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem("player-theme", next ? "dark" : "light");
+  }
+
   const currentStop = tour.stops[stopIndex];
 
-  // Play the current (possibly truncated) text for a stop + category
   function playText(stopIdx: number, cat: string, length: ContentLength) {
     const raw = tour.stops[stopIdx]?.content[cat];
     if (!raw) return;
@@ -588,7 +619,6 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
     speak(applyLength(raw, length));
   }
 
-  // Navigate to a stop — no autoplay, user presses play intentionally
   function goTo(index: number) {
     stop();
     setStopIndex(index);
@@ -596,7 +626,6 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
       (c) => tier === "pro" || FREE_CATEGORIES.has(c)
     ) ?? "history";
     setActiveCategory(firstFree);
-    // intentionally no auto-play here
   }
 
   function handleCategoryChange(cat: string) {
@@ -607,11 +636,10 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
 
   function handleLengthChange(v: ContentLength) {
     setContentLength(v);
-    stop(); // restart so next play uses new length
+    stop();
   }
 
   function handlePlay() {
-    // If AudioContext is suspended, the same audio is paused — resume it
     if (!isPlaying && progress > 0 && progress < 1) {
       resume();
     } else {
@@ -620,210 +648,236 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
   }
 
   return (
-    <div className="h-screen bg-[#0d0d0d] text-white flex flex-col overflow-hidden">
+    <div className={isDark ? "dark" : ""}>
+      <div className="h-screen bg-slate-50 dark:bg-[#0d0d0d] text-slate-900 dark:text-white flex flex-col overflow-hidden">
 
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0 bg-[#111]">
-        <Link href={`/tour/${tour.id}`} onClick={() => stop()} className="text-white/50 hover:text-white text-sm transition-colors">
-          ← Back
-        </Link>
-        <div className="text-center">
-          <p className="text-xs font-semibold truncate max-w-[160px]">{tour.title}</p>
-          <p className="text-xs text-white/40">{tour.cityName}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {tier === "pro" && <span className="text-xs text-yellow-400 font-semibold">★ Pro</span>}
-          <button
-            onClick={() => setGpsMode(!gpsMode)}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors border ${
-              gpsMode ? "bg-green-500/20 border-green-500/40 text-green-400" : "bg-white/10 border-white/20 text-white/50"
-            }`}
-          >
-            {gpsMode ? "📍 GPS" : "👆 Manual"}
-          </button>
-        </div>
-      </div>
-
-      {/* Model loading banner */}
-      <ModelLoadingBanner state={modelState} progress={loadProgress} usingFallback={usingFallback} onRetry={retry} />
-
-      {/* Main layout */}
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* Stops sidebar — retractable */}
-        <div
-          className="flex-shrink-0 border-r border-white/10 flex flex-col bg-[#0f0f0f] overflow-hidden transition-all duration-200"
-          style={{ width: sidebarOpen ? "13rem" : "2.75rem" }}
-        >
-          {/* Sidebar header + toggle */}
-          <div className="flex items-center justify-between px-2 pt-3 pb-2 flex-shrink-0">
-            {sidebarOpen && (
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/30 pl-2">
-                {tour.stops.length} Stops
-              </p>
-            )}
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10 flex-shrink-0 bg-white dark:bg-[#111]">
+          <Link href={`/tour/${tour.id}`} onClick={() => stop()} className="text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white text-sm transition-colors">
+            ← Back
+          </Link>
+          <div className="text-center">
+            <p className="text-xs font-semibold truncate max-w-[140px] text-slate-900 dark:text-white">{tour.title}</p>
+            <p className="text-xs text-slate-400 dark:text-white/40">{tour.cityName}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {tier === "pro" && <span className="text-xs text-yellow-500 dark:text-yellow-400 font-semibold">★ Pro</span>}
+            {/* Light/dark toggle */}
             <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="ml-auto w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white/40 hover:bg-white/20 hover:text-white/70 transition-colors text-xs flex-shrink-0"
-              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              onClick={toggleTheme}
+              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/20 transition-colors text-sm"
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {sidebarOpen ? "‹" : "›"}
+              {isDark ? "☀" : "🌙"}
+            </button>
+            <button
+              onClick={() => setGpsMode(!gpsMode)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors border ${
+                gpsMode
+                  ? "bg-green-500/20 border-green-500/40 text-green-600 dark:text-green-400"
+                  : "bg-slate-100 dark:bg-white/10 border-slate-200 dark:border-white/20 text-slate-500 dark:text-white/50"
+              }`}
+            >
+              {gpsMode ? "📍 GPS" : "👆 Manual"}
             </button>
           </div>
-
-          {/* Stop list */}
-          <div className="flex-1 overflow-y-auto px-1.5 pb-3 space-y-1">
-            {tour.stops.map((s, i) => {
-              const isActive = i === stopIndex;
-              const closed   = isLikelyClosed(s.practical?.opening_hours ?? null, selectedDay);
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => goTo(i)}
-                  title={s.name}
-                  className={`w-full text-left rounded-xl transition-all ${
-                    sidebarOpen ? "px-3 py-3" : "px-1.5 py-2 flex justify-center"
-                  } ${
-                    isActive
-                      ? "bg-white/12 border border-white/20"
-                      : "hover:bg-white/[0.05] border border-transparent"
-                  }`}
-                >
-                  {sidebarOpen ? (
-                    <div className="flex items-center gap-2.5">
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isActive ? "bg-white text-black" : "bg-white/10 text-white/40"}`}>
-                        {i + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-xs font-medium leading-tight truncate ${isActive ? "text-white" : "text-white/60"}`}>
-                          {s.name}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <p className="text-[10px] text-white/30">{s.duration_minutes} min</p>
-                          {closed && <span className="text-[9px] text-amber-400/70">⚠ closed</span>}
-                          {isFreeAdmission(s.practical?.admission_fee ?? null) && (
-                            <span className="text-[9px] text-green-400/60">Free</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${isActive ? "bg-white text-black" : "bg-white/10 text-white/40"}`}>
-                        {i + 1}
-                      </span>
-                      {closed && (
-                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400/70" />
-                      )}
-                    </div>
-                  )}
-
-                  {sidebarOpen && isActive && isPlaying && (
-                    <div className="flex gap-0.5 mt-2 ml-7">
-                      {[1, 2, 3].map((b) => (
-                        <div key={b} className="w-0.5 bg-white/50 rounded-full animate-pulse"
-                          style={{ height: `${6 + b * 3}px`, animationDelay: `${b * 0.15}s` }} />
-                      ))}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Sidebar footer controls */}
-          {sidebarOpen && (
-            <>
-              <DaySelector selected={selectedDay} onChange={setSelectedDay} />
-              {tier === "pro" && (
-                <div className="px-3 py-2 border-t border-white/10">
-                  <p className="text-[9px] text-white/25 uppercase tracking-widest mb-1.5">Voice</p>
-                  <select
-                    value={voice}
-                    onChange={(e) => { setVoice(e.target.value); stop(); }}
-                    className="w-full text-xs bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white/60 focus:outline-none focus:border-white/40"
-                  >
-                    {VOICES.map((v) => (
-                      <option key={v.id} value={v.id} className="bg-[#1a1a1a]">{v.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {gpsMode && (
-                <div className="px-3 py-2 border-t border-white/10">
-                  <p className="text-[10px] text-white/30 leading-relaxed">📍 Narration plays when you arrive at each stop.</p>
-                </div>
-              )}
-            </>
-          )}
         </div>
 
-        {/* Narration area */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Stop photo */}
-          {currentStop.photo_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={currentStop.photo_url}
-              alt={currentStop.name}
-              className="w-full h-24 sm:h-36 object-cover flex-shrink-0"
-            />
-          )}
+        {/* Model loading banner */}
+        <ModelLoadingBanner state={modelState} progress={loadProgress} usingFallback={usingFallback} onRetry={retry} />
 
-          {/* Stop header */}
-          <div className="flex-shrink-0 px-5 pt-3 pb-2 border-b border-white/10">
-            <div className="flex items-start justify-between gap-2">
-              <h2 className="font-bold text-lg leading-tight flex-1 min-w-0">{currentStop.name}</h2>
-              <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
-                <FavoriteButton
-                  key={currentStop.id}
-                  stopId={currentStop.id}
-                  initialFavorited={favoriteIds.has(currentStop.id)}
-                  size="sm"
-                />
-                {isLikelyClosed(currentStop.practical?.opening_hours ?? null, selectedDay) && (
-                  <span className="text-xs text-amber-400/80 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full flex-shrink-0">
-                    ⚠ May be closed {DAY_LABELS[selectedDay]}
-                  </span>
-                )}
-              </div>
+        {/* Main layout */}
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* Stops sidebar — retractable */}
+          <div
+            className="flex-shrink-0 border-r border-slate-200 dark:border-white/10 flex flex-col bg-slate-100 dark:bg-[#0f0f0f] overflow-hidden transition-all duration-200"
+            style={{ width: sidebarOpen ? "13rem" : "2.75rem" }}
+          >
+            {/* Sidebar header + toggle */}
+            <div className="flex items-center justify-between px-2 pt-3 pb-2 flex-shrink-0">
+              {sidebarOpen && (
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-white/30 pl-2">
+                  {tour.stops.length} Stops
+                </p>
+              )}
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="ml-auto w-7 h-7 rounded-lg bg-slate-200 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-white/40 hover:bg-slate-300 dark:hover:bg-white/20 hover:text-slate-700 dark:hover:text-white/70 transition-colors text-xs flex-shrink-0"
+                title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              >
+                {sidebarOpen ? "‹" : "›"}
+              </button>
             </div>
-            {currentStop.tags.length > 0 && (
-              <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                {currentStop.tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/40">{tag}</span>
-                ))}
-              </div>
+
+            {/* Stop list */}
+            <div className="flex-1 overflow-y-auto px-1.5 pb-3 space-y-1">
+              {tour.stops.map((s, i) => {
+                const isActive = i === stopIndex;
+                const closed   = isLikelyClosed(s.practical?.opening_hours ?? null, selectedDay);
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => goTo(i)}
+                    title={s.name}
+                    className={`w-full text-left rounded-xl transition-all ${
+                      sidebarOpen ? "px-3 py-3" : "px-1.5 py-2 flex justify-center"
+                    } ${
+                      isActive
+                        ? "bg-slate-200 dark:bg-white/[0.12] border border-slate-300 dark:border-white/20"
+                        : "hover:bg-slate-200/60 dark:hover:bg-white/[0.05] border border-transparent"
+                    }`}
+                  >
+                    {sidebarOpen ? (
+                      <div className="flex items-center gap-2.5">
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                          isActive
+                            ? "bg-slate-800 dark:bg-white text-white dark:text-black"
+                            : "bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/40"
+                        }`}>
+                          {i + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs font-medium leading-tight truncate ${isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-white/60"}`}>
+                            {s.name}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <p className="text-[10px] text-slate-400 dark:text-white/30">{s.duration_minutes} min</p>
+                            {closed && <span className="text-[9px] text-amber-600 dark:text-amber-400/70">⚠ closed</span>}
+                            {isFreeAdmission(s.practical?.admission_fee ?? null) && (
+                              <span className="text-[9px] text-green-600 dark:text-green-400/60">Free</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          isActive
+                            ? "bg-slate-800 dark:bg-white text-white dark:text-black"
+                            : "bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/40"
+                        }`}>
+                          {i + 1}
+                        </span>
+                        {closed && (
+                          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400/70" />
+                        )}
+                      </div>
+                    )}
+
+                    {sidebarOpen && isActive && isPlaying && (
+                      <div className="flex gap-0.5 mt-2 ml-7">
+                        {[1, 2, 3].map((b) => (
+                          <div key={b} className="w-0.5 bg-slate-600 dark:bg-white/50 rounded-full animate-pulse"
+                            style={{ height: `${6 + b * 3}px`, animationDelay: `${b * 0.15}s` }} />
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sidebar footer controls */}
+            {sidebarOpen && (
+              <>
+                <DaySelector selected={selectedDay} onChange={setSelectedDay} />
+                {tier === "pro" && (
+                  <div className="px-3 py-2 border-t border-slate-200 dark:border-white/10">
+                    <p className="text-[9px] text-slate-400 dark:text-white/25 uppercase tracking-widest mb-1.5">Voice</p>
+                    <select
+                      value={voice}
+                      onChange={(e) => { setVoice(e.target.value); stop(); }}
+                      className="w-full text-xs bg-slate-200 dark:bg-white/10 border border-slate-300 dark:border-white/20 rounded-lg px-2 py-1 text-slate-700 dark:text-white/60 focus:outline-none focus:border-slate-400 dark:focus:border-white/40"
+                    >
+                      {VOICES.map((v) => (
+                        <option key={v.id} value={v.id} className="bg-white dark:bg-[#1a1a1a]">{v.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {gpsMode && (
+                  <div className="px-3 py-2 border-t border-slate-200 dark:border-white/10">
+                    <p className="text-[10px] text-slate-500 dark:text-white/30 leading-relaxed">📍 Narration plays when you arrive at each stop.</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* Narration panel */}
-          <div className="flex-1 overflow-hidden">
-            <NarrationPanel
-              stop={currentStop}
-              activeCategory={activeCategory}
-              tier={tier}
-              contentLength={contentLength}
-              onCategoryChange={handleCategoryChange}
-              onLengthChange={handleLengthChange}
-            />
+          {/* Narration area */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-white dark:bg-[#0d0d0d]">
+            {/* Stop photo or gradient placeholder */}
+            {currentStop.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentStop.photo_url}
+                alt={currentStop.name}
+                className="w-full h-24 sm:h-36 object-cover flex-shrink-0"
+              />
+            ) : (
+              <div
+                className="w-full h-10 sm:h-16 flex-shrink-0"
+                style={{ background: `linear-gradient(135deg, ${tour.coverColor}55 0%, ${tour.coverColor}11 100%)` }}
+              />
+            )}
+
+            {/* Stop header */}
+            <div className="flex-shrink-0 px-5 pt-3 pb-2 border-b border-slate-200 dark:border-white/10">
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="font-bold text-lg leading-tight flex-1 min-w-0 text-slate-900 dark:text-white">{currentStop.name}</h2>
+                <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                  <FavoriteButton
+                    key={currentStop.id}
+                    stopId={currentStop.id}
+                    initialFavorited={favoriteIds.has(currentStop.id)}
+                    size="sm"
+                  />
+                  {isLikelyClosed(currentStop.practical?.opening_hours ?? null, selectedDay) && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex-shrink-0">
+                      ⚠ May be closed {DAY_LABELS[selectedDay]}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {currentStop.tags.length > 0 && (
+                <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                  {currentStop.tags.slice(0, 4).map((tag) => (
+                    <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-white/40">{tag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Narration panel */}
+            <div className="flex-1 overflow-hidden">
+              <NarrationPanel
+                stop={currentStop}
+                activeCategory={activeCategory}
+                tier={tier}
+                contentLength={contentLength}
+                coverColor={tour.coverColor}
+                onCategoryChange={handleCategoryChange}
+                onLengthChange={handleLengthChange}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Audio controls */}
-      <AudioControls
-        stop={currentStop}
-        stopIndex={stopIndex}
-        totalStops={tour.stops.length}
-        isPlaying={isPlaying}
-        isGenerating={isGenerating}
-        progress={progress}
-        onPlay={handlePlay}
-        onPause={pause}
-        onPrev={() => stopIndex > 0 && goTo(stopIndex - 1)}
-        onNext={() => stopIndex < tour.stops.length - 1 && goTo(stopIndex + 1)}
-      />
+        {/* Audio controls */}
+        <AudioControls
+          stop={currentStop}
+          stopIndex={stopIndex}
+          totalStops={tour.stops.length}
+          isPlaying={isPlaying}
+          isGenerating={isGenerating}
+          progress={progress}
+          onPlay={handlePlay}
+          onPause={pause}
+          onPrev={() => stopIndex > 0 && goTo(stopIndex - 1)}
+          onNext={() => stopIndex < tour.stops.length - 1 && goTo(stopIndex + 1)}
+        />
+      </div>
     </div>
   );
 }

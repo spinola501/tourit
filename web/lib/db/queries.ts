@@ -44,6 +44,20 @@ export async function getTourById(tourId: string) {
   return data;
 }
 
+export async function getStopsByCity(cityId: string) {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("stops")
+    .select(`
+      id, name, lat, lng, duration_minutes, tags, photo_url,
+      stop_practical(admission_fee)
+    `)
+    .eq("city_id", cityId)
+    .order("name", { ascending: true })
+    .limit(200);
+  return data ?? [];
+}
+
 export async function getStopContent(stopId: string, language = "en") {
   const db = createAdminClient();
   const { data } = await db
