@@ -146,6 +146,7 @@ An AI-powered audio tour app that researches and narrates the story of any place
 - [ ] Analytics dashboard (Posthog)
 - [ ] Error monitoring (Sentry)
 - [x] Vercel deployment (web) — live at https://tourit-sigma.vercel.app (under spinola501, auto-deploys on push)
+- [x] Custom domain registered: tourit.es (pending DNS configuration)
 - [ ] EAS deployment (mobile)
 
 ---
