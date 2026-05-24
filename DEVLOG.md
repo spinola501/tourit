@@ -77,3 +77,101 @@ Reference UX: the Litchfield National Park one-day guide — rich narrative, sto
 - [ ] Ruta de admin para disparar generación de tours
 - [ ] Conectar reproductor de audio real en el player (Web Audio API o elemento `<audio>`)
 - [ ] Página de perfil de usuario con formulario de datos personales y perfil de grupo por defecto
+
+---
+
+## Session 002 — 2026-05-22
+
+**Goal:** Phase 2 AI pipeline end-to-end. Real Supabase data in the player. Cities and tours for Australia (Darwin + Sydney) for on-the-ground testing. Admin panel. Vercel deployment.
+
+### 17:20 — Pipeline AI completa, ciudades AU, admin panel y despliegue en Vercel
+
+- **Verificación de Supabase:** Endpoint `/api/admin/verify` confirma las 10 tablas del schema live (cities, stops, stop_content, stop_practical, tours, tour_stops, stop_plays, stop_reports, stop_transitions, users). Se descubrió que `.env.local` tenía la URL con sufijo `/rest/v1/` — el cliente JS de Supabase necesita la URL base del proyecto. Corregido.
+- **Pipeline de generación funcionando:** Tavily → Claude Haiku (claude-haiku-4-5-20251001) con prompt caching → validación Zod → insert en Supabase. Test con Tower of London exitoso. Se amplió el límite de tags de Zod de `max(5)` a `max(10)` porque Claude generaba hasta 8 tags por parada.
+- **Seed de Londres:** Ampliado de 8 a 32 paradas: Tower of London, Tower Bridge, St Paul's, Westminster, Tate Modern, Borough Market, Greenwich, Kew Gardens, Hampton Court, Camden Market, Portobello Road, Canary Wharf, Barbican, Museum of London, Leadenhall Market, Southbank, Battersea, Victoria & Albert, Natural History Museum, Hyde Park, Buckingham Palace, Trafalgar Square, British Museum, Oxford Street, Covent Garden, Shoreditch, Notting Hill, Richmond Park, London Eye, The Shard, Bank of England Museum, Brixton.
+- **Seed de Sydney:** 26 paradas: Opera House, Harbour Bridge, Bondi Beach, Circular Quay, The Rocks, Darling Harbour, Manly Beach, Coogee Beach, Blue Mountains (Katoomba / Three Sisters), Taronga Zoo, Royal Botanic Garden, Hyde Park, Australian Museum, Newtown, Paddington, Fish Market, Barangaroo, Luna Park, Watsons Bay, Cremorne Point, Balmain, Glebe, Surry Hills, Chippendale, Cronulla, Homebush Bay.
+- **Seed de Darwin:** 18 paradas: Darwin Waterfront, Mindil Beach, Crocosaurus Cove, Darwin Museum & Art Gallery, Fannie Bay Gaol, RAAF Darwin Aviation Museum, East Point Military Museum, Wave Hill Walk-Off Memorial, Litchfield NP (Wangi Falls), Litchfield NP (Florence Falls), Litchfield NP (Magnetic Termite Mounds), Kakadu (Ubirr), Kakadu (Yellow Water), Territory Wildlife Park, Berry Springs Nature Park, Howard Springs Nature Park, Crocodylus Park, Darwin Botanic Gardens.
+- **Fix de duplicados:** Runs paralelos del seed causaban duplicados antes del chequeo de existencia. Solución: endpoint `POST /api/admin/repair` que agrupa stops por nombre (insensitive), elimina duplicados (preservando el más antiguo), y reconstruye `tour_stops` desde cero para cada city. El seed ahora usa `.ilike("name", stop.name)` para chequeo case-insensitive.
+- **Fix de seed — tour upfront:** El tour ahora se crea antes del bucle de paradas; cada parada se enlaza a `tour_stops` inmediatamente al insertarse (no en batch al final). Esto evita que interrupciones o runs incompletos dejen el tour con menos paradas de las esperadas.
+- **Queries de servidor:** Creado `web/lib/db/queries.ts` con `getCityBySlug`, `getToursByCity`, `getTourById` (con join profundo: tour + cities + tour_stops + stops + stop_content + stop_practical) y `getStopContent`.
+- **Páginas conectadas a datos reales:** `app/page.tsx`, `app/city/[slug]/page.tsx`, `app/tour/[id]/page.tsx` y `app/tour/[id]/play/page.tsx` leen de Supabase. Todos con `export const dynamic = "force-dynamic"` para evitar prerender estático en build de Vercel.
+- **Panel de admin** (`/admin`): gate de contraseña (no hardcodeada en el bundle — el usuario la escribe, se guarda en estado de componente), toggle Free/Pro, tabla de conteo por tabla de BD, botón de seed con resultados en tiempo real, botón Repair, links rápidos a páginas clave.
+- **Hook `useTier`:** Cookie `tourit_tier` leída al montar, actualizada vía evento custom `tourit_tier_changed` (para sync en misma pestaña) y vía `visibilitychange` (para sync entre pestañas). `setCookieTier()` escribe directamente vía `document.cookie` y despacha el evento.
+- **TourPlayer reescrito completo:** Lee datos reales del server component (tipos `PlayerStop` / `PlayerTour`). Tier-gating: `FREE_CATEGORIES = Set(["history", "funfacts", "practical"])`. Categorías Pro muestran icono 🔒 y al hacer clic abren pantalla de upgrade. Badge `★ Pro` en barra superior cuando el tier es pro. `goTo(index)` selecciona la primera categoría disponible para el tier actual.
+- **Diagnose endpoint:** `GET /api/admin/diagnose` devuelve desglose por ciudad con nombre de paradas, número de categorías de contenido y estado de practical info.
+- **Git y GitHub:** Repo inicializado, subido a `https://github.com/spinola501/tourit` (cuenta spinola501). Credenciales de git configuradas con token gh de spinola501 en la remote URL.
+- **Despliegue en Vercel:** `npx vercel --yes --prod` desde `web/`. URL: `https://web-cspinola1s-projects.vercel.app`. Se corrigió el build error de Vercel (páginas con Supabase necesitaban `force-dynamic`). Desplegado bajo la cuenta `cspinola1` (pending transfer a spinola501).
+
+**Ficheros creados:**
+- `web/lib/db/queries.ts` — Queries de servidor: getCityBySlug, getToursByCity, getTourById (join profundo), getStopContent
+- `web/lib/hooks/useTier.ts` — Hook + helpers: getCookieTier, setCookieTier, useTier (event + visibilitychange sync)
+- `web/app/api/admin/verify/route.ts` — GET: comprueba existencia y row count de las 10 tablas
+- `web/app/api/admin/diagnose/route.ts` — GET: desglose por ciudad de stops y contenido
+- `web/app/api/admin/repair/route.ts` — POST: deduplica stops por nombre, reconstruye tour_stops
+- `web/app/api/admin/session/route.ts` — POST/DELETE/GET: gestión server-side de cookie tourit_tier
+- `web/app/admin/page.tsx` — Panel de admin: gate de contraseña, Pro toggle, DB status, seed runner, Repair
+
+**Ficheros modificados:**
+- `web/app/page.tsx` — Ciudades desde Supabase live + force-dynamic (antes mock)
+- `web/app/city/[slug]/page.tsx` — Tours desde Supabase + force-dynamic (antes mock)
+- `web/app/tour/[id]/page.tsx` — Tour detail desde Supabase + force-dynamic
+- `web/app/tour/[id]/play/page.tsx` — Server component reescrito: tipos PlayerStop/PlayerTour, datos de Supabase, transform de stop_content a `Record<string, string>`
+- `web/app/tour/[id]/play/TourPlayer.tsx` — Reescrito completo: datos reales, tier gating, locked categories, Pro upgrade screen
+- `web/app/api/admin/seed/route.ts` — Expandido a 32/26/18 paradas (London/Sydney/Darwin), tour upfront, ilike duplicate check, Darwin y Sydney añadidos
+- `web/lib/generation/schemas.ts` — tags max(5) → max(10)
+
+---
+
+## Pendiente para próxima sesión
+- [ ] Transferir proyecto Vercel de cspinola1 a spinola501 (Vercel dashboard → Settings → Transfer)
+- [ ] Conectar repo de GitHub a Vercel para auto-deploy en push (actualmente deploy manual via CLI)
+- [ ] Configurar dominio limpio en Vercel (ej. tourit.app o tourit.guide)
+- [ ] Ejecutar Repair si quedan duplicados residuales en London
+- [ ] GPS geofencing en web: Geolocation API + lógica de proximidad a paradas
+- [ ] Supabase Auth: login con email / Google OAuth
+- [ ] Añadir más ciudades al seed (Paris, Rome, NYC para completar Tier 1)
+- [ ] Analytics: logging en tabla stop_plays cuando el usuario reproduce una parada
+- [ ] Fotos de paradas: fetch automático desde Wikimedia Commons en el pipeline de seed
+
+---
+
+## Session 003 — 2026-05-23
+
+**Goal:** Audio real con Kokoro TTS (browser WebAssembly, coste cero). Cuatro features de UX para testing en campo. Análisis de costes y dominios. Actualización de roadmap.
+
+### 11:30 — Kokoro TTS + features de player: sidebar retractable, preview sin autoplay, longitud de contenido, avisos de cierre por día
+
+- **Análisis de costes Año 1:** Desglose completo en tres escenarios (bootstrapped ~$1.700/año, con marketing ligero ~$2.900/año, con growth spend ~$10.700/año). Se identificó ElevenLabs como el gasto variable principal ($480–$1.188/año). Se analizaron alternativas: OpenAI TTS (20× más barato), Google Neural2, Azure, Amazon Polly, Kokoro (gratis, browser).
+- **Decisión TTS:** Kokoro para todos los usuarios (free y Pro). Calidad suficiente para narración informativa en exterior. Cost: $0. Funciona offline. Voces Pro: 8 opciones (británicas y americanas). ElevenLabs/OpenAI TTS reservado para uso futuro si se necesita.
+- **Kokoro integrado:** `kokoro-js@1.2.1` instalado. TourPlayer reescrito: hook `useKokoro` reemplaza `useSpeech`. Generación asíncrona con spinner en play button. Cache en memoria (Map) para replay instantáneo. Pausa/reanuda vía AudioContext.suspend/resume. Cancelación de generaciones supersedidas via genId ref.
+- **next.config.ts actualizado:** Turbopack mode (`turbopack: {}`) + cabeceras COOP/COEP en `/tour/:id/play` para SharedArrayBuffer (WASM multi-hilo).
+- **Banner de carga del modelo:** Barra de progreso slim en la parte superior del player mientras se descarga el modelo (~80MB, una sola vez, cacheado para siempre).
+- **Selector de voz para Pro:** Dropdown en el sidebar con 8 voces Kokoro. Free users usan Emma (British) por defecto sin selector visible.
+- **Sidebar retractable:** Botón ‹/› en la cabecera del sidebar. Colapsa de 13rem a 2.75rem mostrando sólo los números de parada con transición CSS. En modo colapsado, el badge ⚠ (parada cerrada) se muestra como punto naranja sobre el número.
+- **Preview sin autoplay:** `goTo()` ya no llama a `playText()` automáticamente. El usuario navega a una parada, lee el texto, y pulsa ▶ cuando quiere escuchar. Comportamiento más natural para uso exploratorio.
+- **Toggle de longitud de contenido:** Short (120 palabras) / Medium (300 palabras) / Full. Visible encima de las category tabs en el panel de narración. Se aplica tanto al texto mostrado como al audio generado (el texto truncado se pasa a `speak()`). Al cambiar longitud, el audio actual se detiene.
+- **Avisos de cierre por día de semana:** Selector de día (S M T W T F S) en el footer del sidebar, por defecto el día actual. Función `isLikelyClosed()` detecta patrones en el campo `opening_hours` ("closed monday", "sun: closed", etc.). Badge ⚠ naranja en la lista del sidebar y banner en la cabecera de la parada activa cuando está posiblemente cerrada.
+- **Expandable stop cards en tour detail:** Nuevo componente `StopPreviewCard` (client component). Las tarjetas de parada en `/tour/[id]` son ahora expandibles: al pulsar se despliega el contenido completo con category tabs, narración, info práctica y accesibilidad. Permite explorar el tour completo antes de iniciarlo.
+- **Análisis de dominio:** `.com` y `.io` no disponibles. Recomendaciones: `tourit.app` (mejor opción global), `tourit.guide` (descriptivo), `tourit.audio` (único), `tourit.co`. Registro recomendado de ambos .app y .guide (~€25–30/año).
+- **Análisis de almacenamiento de fotos:** Hosting 200GB/11€ mes no es el fit correcto. Supabase Storage (ya en el stack, 1GB gratis) es la opción para early stage. Fuente de fotos: Wikimedia Commons API (gratis, calidad excelente, tiene todas las paradas generadas).
+- **Android Auto / Apple CarPlay:** Analizados. Posibles en Phase 5. CarPlay requiere entitlement de Apple (Audio template, proceso de aprobación 1–4 semanas). Android Auto sin gate de aprobación. Ambos usarían Kokoro a través de los altavoces del coche.
+- **Features backlog documentado en ROADMAP:** Walking vs driving mode, favourites, sharing, interest profile, free activities filter, photo storage → Phase 3/4. Android Auto + CarPlay → Phase 5. Phase 2.5 creada para las mejoras de player completadas hoy.
+
+**Ficheros creados:**
+- `web/app/tour/[id]/StopPreviewCard.tsx` — Client component: tarjetas expandibles con category tabs, narración completa, info práctica y accesibilidad
+
+**Ficheros modificados:**
+- `web/app/tour/[id]/play/TourPlayer.tsx` — Reescrito: Kokoro TTS, sidebar retractable, day selector, content length toggle, preview sin autoplay, voice selector Pro
+- `web/app/tour/[id]/page.tsx` — Stops list reemplazada con `StopPreviewCard` expandible
+- `web/next.config.ts` — Turbopack mode + COOP/COEP headers para WASM
+
+---
+
+## Pendiente para próxima sesión
+- [ ] Transferir proyecto Vercel de cspinola1 a spinola501
+- [ ] Dominio: registrar tourit.app o tourit.guide
+- [ ] Fotos de paradas: Wikimedia Commons API en el pipeline de seed
+- [ ] GPS geofencing: Geolocation API + proximidad a paradas en web player
+- [ ] Supabase Auth (Phase 3 start)
+- [ ] Walking vs driving mode (Phase 4 preview)
+- [ ] Reparar duplicados de London si los hay (botón Repair en /admin)

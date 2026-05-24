@@ -32,34 +32,51 @@ An AI-powered audio tour app that researches and narrates the story of any place
 
 ---
 
-## Phase 2 — Stops Library & AI Pipeline ✦ Current
+## Phase 2 — Stops Library & AI Pipeline ✅ Complete
 **Goal:** Real AI-generated stop content stored in Supabase. Batch seed script to pre-generate worldwide catalogue.
 
-- [ ] Supabase project setup
-- [ ] Database schema: cities, stops, stop_content, stop_practical, tours, tour_stops, stop_plays, stop_reports, stop_transitions
-- [ ] Environment config: `.env.local` with all service keys
-- [ ] Tavily web search integration — research per stop
-- [ ] Claude API integration — generate all 11 categories per stop with prompt caching
-- [ ] Zod schema validation on generation output
-- [ ] `/api/generate/stop` route — takes stop name + city + coords → returns structured content
+- [x] Supabase project setup
+- [x] Database schema: cities, stops, stop_content, stop_practical, tours, tour_stops, stop_plays, stop_reports, stop_transitions
+- [x] Environment config: `.env.local` with all service keys
+- [x] Tavily web search integration — research per stop
+- [x] Claude API integration — generate all 11 categories per stop with prompt caching
+- [x] Zod schema validation on generation output
+- [x] `/api/generate/stop` route — takes stop name + city + coords → returns structured content (`/api/admin/seed` covers this inline)
 - [ ] `/api/generate/tour` route — takes city + tour type → assembles stops + generates transitions
 - [ ] Cities seed list — 250 cities with coordinates, emoji, cover colour
 - [ ] Stops seed list — 5,000 stops across 200 cities (name, coords, city)
-- [ ] Batch seed script with rate limiting + resumability (skips already-generated stops)
+- [x] Batch seed script with rate limiting + resumability (skips already-generated stops)
 - [ ] ElevenLabs TTS integration — lazy audio generation on first play, stored in Cloudflare R2
-- [ ] Connect player to real Supabase data (replace mock)
+- [x] Connect player to real Supabase data (replace mock)
 - [ ] Stop engagement analytics logging (`stop_plays` table)
-- [ ] Pre-generate Tier 1 cities: London, Paris, Rome, NYC, Tokyo, Barcelona (test run)
+- [ ] Pre-generate Tier 1 cities: London, Paris, Rome, NYC, Tokyo, Barcelona (test run) — London ✓, Sydney ✓, Darwin ✓ (AU testing); Paris, Rome, NYC pending
 
 ---
 
-## Phase 3 — Auth, Profiles & Freshness
+## Phase 2.5 — Player UX ✅ Complete
+**Goal:** Production-ready player with real audio, UI refinements and usability features.
+
+- [x] Kokoro TTS (browser WebAssembly, $0 cost, works offline) replacing Web Speech API
+- [x] Voice model download progress bar (one-time ~80MB, cached forever)
+- [x] Audio cache — generated narration cached in-memory, instant replay
+- [x] Voice selector for Pro users (8 voices: British + American, M/F)
+- [x] Retractable stops sidebar (‹/› toggle, collapses to numbered icon strip)
+- [x] Stop info preview without autoplay — click stop to read, play button to listen
+- [x] Content length toggle: Short (120w) / Medium (300w) / Full — applied to both text and audio
+- [x] Day-of-week selector + closed-stop warnings (⚠ badge in sidebar, banner in stop header)
+- [x] Expandable stop cards on tour detail page — full narration preview before starting tour
+
+---
+
+## Phase 3 — Auth, Profiles & Freshness ✦ Current
 **Goal:** Users can sign in, set preferences, save tours. Practical info stays fresh automatically.
 
 - [ ] Supabase Auth (email + Google OAuth)
 - [ ] User profile: name, home city, language preference, group profile defaults
 - [ ] Group profile: mobility (full/seniors/wheelchair/stroller), ages, pace
-- [ ] Save / favourite tours
+- [ ] Interest tags on profile (history, architecture, food…) → personalised tour recommendations
+- [ ] Free activities filter (parse admission_fee, badge free stops, profile pref)
+- [ ] Save / favourite stops and tours
 - [ ] Free tier limits enforced in middleware (categories gated, max 3 saved tours)
 - [ ] `last_verified_at` shown on practical info in player
 - [ ] User report button in player ("Something wrong here?" → dropdown)
@@ -76,14 +93,15 @@ An AI-powered audio tour app that researches and narrates the story of any place
 
 - [ ] Stripe subscriptions (monthly + annual plans)
 - [ ] Tour builder UI: browse stops by city, add/remove/reorder, name + save tour
+- [ ] Walking vs driving mode — toggle swaps duration estimates + filters car-inaccessible stops
 - [ ] Content category selector per tour (all 11 categories for Pro)
 - [ ] Group profile per tour → adapted accessibility notes surfaced in player
 - [ ] Shareable tour links — short UUID link, preview for free users + paywall upsell
+- [ ] Favourites — save stops and tours to a personal list
 - [ ] Stop Q&A agent — contextual chat per stop, RAG on `stop_content`, prompt-cached, Pro only
 - [ ] Q&A agent answers in user's language regardless of content language
 - [ ] DeepL lazy translation — non-primary languages translated on first request, cached
 - [ ] Generate content in ES, FR, DE, PT, IT (batch run for Tier 1 cities)
-- [ ] ElevenLabs multilingual voices — audio per stop × language
 - [ ] Tour templates: "Photography Walk", "Kid-Friendly", "Foodie", "Senior Accessible"
 - [ ] Background prefetching — silently fetch next 2 stops while user listens to current
 - [ ] Framer Motion animations: stop transitions, audio waveform, Q&A panel slide-up
@@ -97,10 +115,14 @@ An AI-powered audio tour app that researches and narrates the story of any place
 **Goal:** Real GPS-triggered audio on mobile. Full offline support.
 
 - [ ] React Native / Expo app (iOS + Android)
+- [ ] Kokoro model bundled as Expo asset — zero download on first launch
 - [ ] Background audio playback (AVAudioSession iOS, ExoPlayer Android)
 - [ ] GPS geofencing: auto-play stop narration on arrival (configurable radius per stop)
 - [ ] Transition narration: short clips that play while walking between stops
-- [ ] Offline download (Pro): bundle tour text + audio + map tiles + practical info
+- [ ] Walking vs driving route mode — Mapbox routing adapts to transport type
+- [ ] Offline download (Pro): bundle tour text + map tiles + practical info
+- [ ] Apple CarPlay integration — Audio template (play/pause/skip, stop title display); requires Apple entitlement application
+- [ ] Android Auto integration — MediaBrowserService, no approval gate, audio controls in car UI
 - [ ] Service worker (web): auto-cache recently played stops for implicit offline
 - [ ] Queue-based writes: user reports, favourites, progress synced when back online
 - [ ] Shared state between web and mobile (same Supabase account)
@@ -121,7 +143,8 @@ An AI-powered audio tour app that researches and narrates the story of any place
 - [ ] Marketing site (landing page, pricing, demo video)
 - [ ] Analytics dashboard (Posthog)
 - [ ] Error monitoring (Sentry)
-- [ ] Vercel deployment (web) + EAS (mobile)
+- [x] Vercel deployment (web) — live at https://web-cspinola1s-projects.vercel.app (transfer to spinola501 + custom domain pending)
+- [ ] EAS deployment (mobile)
 
 ---
 

@@ -12,6 +12,7 @@ export type PlayerStop = {
   duration_minutes: number;
   tags: string[];
   accessibility_note: string | null;
+  photo_url: string | null;
   content: Record<string, string>;   // category → text
   practical: {
     opening_hours: string | null;
@@ -46,6 +47,7 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
       duration_minutes: number;
       tags: string[];
       accessibility_note: string | null;
+      photo_url: string | null;
       stop_content: { category: string; text: string }[];
       stop_practical: { opening_hours: string | null; admission_fee: string | null; nearest_transport: string | null } | null;
     };
@@ -61,6 +63,7 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
         duration_minutes: s.duration_minutes,
         tags: s.tags ?? [],
         accessibility_note: s.accessibility_note,
+        photo_url: s.photo_url ?? null,
         content: Object.fromEntries(
           (s.stop_content ?? []).map((c) => [c.category, c.text])
         ),

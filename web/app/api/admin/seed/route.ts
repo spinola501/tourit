@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateStop } from "@/lib/generation/generate-stop";
 import { createAdminClient } from "@/lib/db/supabase";
+import { fetchWikipediaPhoto } from "@/lib/photos/wikipedia";
 
 const SEED_STOPS = [
   {
@@ -296,6 +297,9 @@ export async function POST(req: NextRequest) {
           language: "en",
         });
 
+        // Fetch photo from Wikipedia (non-blocking — failure doesn't abort stop generation)
+        const photoUrl = await fetchWikipediaPhoto(stop.name, `${stop.name}, ${city.cityName}`).catch(() => null);
+
         const { data: newStop, error: stopErr } = await db
           .from("stops")
           .insert({
@@ -306,6 +310,7 @@ export async function POST(req: NextRequest) {
             duration_minutes: generated.duration_minutes,
             tags: generated.tags,
             accessibility_note: generated.accessibility_note,
+            photo_url: photoUrl,
             last_generated_at: new Date().toISOString(),
           })
           .select("id")

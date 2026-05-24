@@ -4,7 +4,7 @@ export async function getCityBySlug(slug: string) {
   const db = createAdminClient();
   const { data } = await db
     .from("cities")
-    .select("id, slug, name, country, emoji, cover_color, lat, lng")
+    .select("id, slug, name, country, emoji, cover_color, lat, lng, photo_url")
     .eq("slug", slug)
     .single();
   return data;
@@ -33,7 +33,7 @@ export async function getTourById(tourId: string) {
       tour_stops(
         order_index,
         stops(
-          id, name, lat, lng, duration_minutes, tags, accessibility_note,
+          id, name, lat, lng, duration_minutes, tags, accessibility_note, photo_url,
           stop_content(category, language, text),
           stop_practical(opening_hours, admission_fee, nearest_transport)
         )

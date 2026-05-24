@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { getTourById } from "@/lib/db/queries";
+import { StopPreviewCard } from "./StopPreviewCard";
 
 const CATEGORY_LABELS: Record<string, string> = {
   history: "History",
@@ -107,51 +108,32 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {/* Stops list */}
+      {/* Stops list — expandable preview cards */}
       {sortedTourStops.length > 0 && (
         <div className="px-6 pb-20 max-w-3xl mx-auto">
           <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40 mb-6 mt-8">
             Stops on this tour
           </h2>
+          <p className="text-xs text-white/30 mb-4 -mt-3">Tap any stop to preview its narration before starting.</p>
           <div className="space-y-3">
             {sortedTourStops.map((ts, i) => {
               const stop = ts.stops;
               if (!stop) return null;
-              const historyContent = stop.stop_content?.find((c) => c.category === "history");
-              const summary = historyContent?.text?.slice(0, 120) ?? "";
-
               return (
-                <div
+                <StopPreviewCard
                   key={stop.id}
-                  className="flex gap-4 rounded-2xl border border-white/10 p-5 bg-white/[0.02]"
-                >
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/60">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold">{stop.name}</h3>
-                      <span className="text-xs text-white/40 flex-shrink-0">⏱ {stop.duration_minutes} min</span>
-                    </div>
-                    {summary && (
-                      <p className="text-sm text-white/50 mb-2">{summary}…</p>
-                    )}
-                    {stop.tags && stop.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {stop.tags.map((tag: string) => (
-                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/50">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {stop.accessibility_note && (
-                      <p className="text-xs text-white/30 mt-2 italic">
-                        ♿ {stop.accessibility_note.slice(0, 100)}…
-                      </p>
-                    )}
-                  </div>
-                </div>
+                  index={i}
+                  stop={{
+                    id: stop.id,
+                    name: stop.name,
+                    duration_minutes: stop.duration_minutes,
+                    tags: stop.tags ?? [],
+                    accessibility_note: stop.accessibility_note,
+                    photo_url: (stop as unknown as { photo_url?: string | null }).photo_url ?? null,
+                    content: stop.stop_content ?? [],
+                    practical: stop.stop_practical ?? null,
+                  }}
+                />
               );
             })}
           </div>
