@@ -4,7 +4,7 @@ export async function getCityBySlug(slug: string) {
   const db = createAdminClient();
   const { data } = await db
     .from("cities")
-    .select("id, slug, name, country, emoji, cover_color, lat, lng, photo_url")
+    .select("id, slug, name, country, emoji, cover_color, lat, lng")
     .eq("slug", slug)
     .single();
   return data;
