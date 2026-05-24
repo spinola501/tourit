@@ -93,7 +93,8 @@ An AI-powered audio tour app that researches and narrates the story of any place
 ## Phase 4 — Pro Tier: Builder, Q&A Agent & Multilingual
 **Goal:** Full Pro feature set. Custom tour building, contextual AI agent, all languages.
 
-- [ ] Stripe subscriptions (monthly + annual plans)
+- [ ] Stripe subscriptions — Trip Pass (€5.99/7 days) + Annual Pro (€16.99/year)
+- [ ] On-demand city generation — Pro users request any city; async job generates stops + tour via Tavily + Haiku; push/email notification when ready (~5 min). Top 200 pre-warmed at launch (see CITIES_SEED.md).
 - [ ] Tour builder UI: browse stops by city, add/remove/reorder, name + save tour
 - [ ] Walking vs driving mode — toggle swaps duration estimates + filters car-inaccessible stops
 - [ ] Content category selector per tour (all 11 categories for Pro)
@@ -169,12 +170,27 @@ An AI-powered audio tour app that researches and narrates the story of any place
 
 ---
 
+## Pricing
+
+| Plan | Price | Target user |
+|---|---|---|
+| **Free** | €0 | Casual tourists, try-before-you-buy |
+| **Trip Pass** | €5.99 / 7 days | Traveller on a specific trip, impulse buy |
+| **Annual Pro** | €16.99 / year (€1.42/mo) | Frequent traveller, 3+ trips/year |
+
+**Rationale:** Monthly subscriptions churn immediately after a trip. Trip pass captures the high-intent moment ("I'm going to Rome next week"). Annual at €1.42/month is below cancel-consideration threshold. Competitors (GPSmyCity, Action Tour Guide) charge €24.99/year — we're 30% cheaper at launch.
+
+**On-demand city generation:** Any city not in the library can be requested by Pro users. The system generates stops + a tour automatically via Tavily research + Claude Haiku. Cost: ~$0.15–0.25/city — negligible against €5.99+ revenue. Generated cities are cached and serve all future users for free. UX: async notification (Option A) for unknown cities; top 200 pre-warmed at launch (Option C). See CITIES_SEED.md for the full plan.
+
+---
+
 ## Tier Comparison
 
 | Feature | Free | Pro |
 |---|---|---|
 | Pre-built tours | ✓ (all cities) | ✓ |
 | Content categories | History + Fun Facts + Practical | All 11 |
+| On-demand city generation | — | ✓ (any city, notified when ready) |
 | Custom tour builder | — | ✓ |
 | Stop Q&A agent | — | ✓ |
 | Offline download | — | ✓ |

@@ -212,11 +212,55 @@ Reference UX: the Litchfield National Park one-day guide — rich narrative, sto
 
 ---
 
+---
+
+## Session 005 — 2026-05-24
+
+**Goal:** UI improvements (light mode, photo placeholders, category filtering), city page stops, pricing strategy, seed plan.
+
+### 13:00 — Player improvements
+
+- **Light/dark toggle:** Botón ☀/🌙 en la top bar del player. `isDark` state con persistencia en localStorage. Wrapper div con clase `dark` activa el custom variant de Tailwind v4 (`&:is(.dark *)`). Paleta de luz: slate-50/white/slate-100 para fondos, slate-900/600/400 para texto, slate-200/300 para bordes. Play button adaptado: `bg-slate-900 dark:bg-white`. Todos los sub-componentes actualizados (ModelLoadingBanner, DaySelector, ContentLengthPicker, CategoryTabs, NarrationPanel, AudioControls, sidebar, top bar).
+- **Category filtering:** Las categorías con menos de 40 palabras de contenido quedan ocultas en los tabs. Evita mostrar categorías vacías o de relleno (ej. "Architecture" para un mercado).
+- **Sentence-boundary truncation:** `applyLength()` reescrito. Antes cortaba a N palabras exactas. Ahora busca el último `.`, `!` o `?` dentro del texto truncado (si está al 55%+ del límite) y corta ahí limpiamente. Mucho más legible.
+- **Photo placeholder:** Si `photo_url` es null (stop sin foto), se muestra una franja de gradiente con el color del tour (`coverColor`) en lugar de un hueco vacío. Con foto: `h-24 sm:h-36 object-cover`. Sin foto: `h-10 sm:h-16` con gradiente decorativo.
+- **coverColor en NarrationPanel:** Pasado como prop para que la estrella del upsell Pro coincida con el color del tour.
+
+### 13:30 — City page: stops list + pro gating
+
+- **`getStopsByCity` query:** Nueva función en `lib/db/queries.ts`. Devuelve id, name, duration_minutes, tags, photo_url, stop_practical.admission_fee. Ordenado por nombre, límite 200.
+- **City page reescrita:** Dos secciones separadas: "Pre-made Tours" (con overlay de bloqueo para tours Pro cuando el usuario es Free) y "All Stops" (grid con foto/placeholder, duración, tags, badge Free si entrada gratuita). Free users ven stops con candado. Pro users los ven desbloqueados (base para el tour builder). CTA "Upgrade to Pro" al final de la sección stops.
+- **Tier detection server-side:** `createServerSupabaseClient()` + admin query a `users.tier` en el server component. Sin flash de contenido.
+
+### 14:00 — DNS tourit.es
+
+- **A record confirmado:** IONOS ya tenía `A @ → 216.198.79.1` que es la nueva IP de Vercel (migración de rango IP en curso). Registro correcto, no era 76.76.21.21 como se pensaba inicialmente. "Invalid configuration" en Vercel es propagación DNS, se resolverá solo.
+- **www CNAME:** `152b2e5b82437e50.vercel-dns-017.com` — correcto, generado por Vercel al añadir el dominio.
+
+### 14:30 — Estrategia de precios y plan de seed
+
+- **Precios decididos:** Trip Pass €5.99/7 días, Annual Pro €16.99/año. Racional: trip pass = compra impulsiva en momento de alto intent (vuelo reservado). €1.42/mes no genera cancelaciones. 30% más barato que competidores directos (GPSmyCity €24.99/año).
+- **On-demand city generation:** Cualquier ciudad no en la biblioteca puede ser generada para usuarios Pro. Coste: ~$0.15-0.25/ciudad (Tavily + Haiku). Cacheada para siempre. Estrategia: Option A (notificación asíncrona, ~5 min generación) + Option C (top 200 ciudades pre-generadas al lanzamiento).
+- **CITIES_SEED.md creado:** Lista de 200 ciudades más visitadas del mundo con país, tier (1-3), stops estimados, coste EN y coste 6 idiomas. Total: 2.250 stops, $33.75 en inglés, $146.25 en 6 idiomas. Punto de recuperación de costes: 27 trip passes vendidos.
+- **ROADMAP actualizado:** Sección de precios añadida, on-demand generation en Phase 4, Stripe actualizado a los nuevos precios.
+
+**Ficheros creados:**
+- `CITIES_SEED.md` — Plan de seed: 200 ciudades, stops estimados, costes de generación desglosados
+
+**Ficheros modificados:**
+- `web/app/tour/[id]/play/TourPlayer.tsx` — Light/dark toggle, category filtering, sentence truncation, photo placeholder
+- `web/lib/db/queries.ts` — Nueva función `getStopsByCity`
+- `web/app/city/[slug]/page.tsx` — Sección stops con gating Free/Pro
+- `ROADMAP.md` — Sección de precios, on-demand generation en Phase 4
+
+---
+
 ## Pendiente para próxima sesión
-- [ ] Ejecutar SQL en Supabase: `UPDATE public.users SET tier = 'pro' WHERE email = 'spinola501@gmail.com';`
-- [ ] Favoritos: guardar paradas y tours (tabla user_favorites + botón en player y tour detail)
-- [ ] Recomendaciones personalizadas en home basadas en intereses del perfil
+- [ ] Backfill fotos: ir a /admin y pulsar "📷 Photos" para Wikipedia backfill (100 stops/vez, ~1/segundo)
+- [ ] Stripe: Trip Pass (€5.99/7d) + Annual Pro (€16.99/año) — webhooks, middleware de gating
+- [ ] On-demand city generation: job queue + notificación email/push cuando ciudad lista
+- [ ] Seed Tier 1 cities (47 ciudades): Paris, Rome, NYC, Tokyo, Bangkok, etc.
 - [ ] GPS geofencing: Geolocation API + auto-play por proximidad en el player web
-- [ ] Dominio: registrar tourit.app o tourit.guide
-- [ ] Reparar duplicados de London (botón Repair en /admin si es necesario)
-- [ ] Paris, Rome, NYC: añadir al seed para completar ciudades Tier 1
+- [ ] Realistic tour stop counts: London tour tiene 25 paradas, recortar a 10-12 en Supabase
+- [ ] Pro tour builder: seleccionar stops de una ciudad y crear tour personalizado
+- [ ] DNS tourit.es: verificar propagación (puede tardar hasta 24h) y actualizar Supabase Auth URLs
