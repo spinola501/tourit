@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { createAdminClient } from "@/lib/db/supabase";
+import { NavBar } from "@/components/NavBar";
 
 async function getFeaturedCities() {
   const db = createAdminClient();
@@ -22,17 +23,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <span className="font-bold text-lg tracking-tight">TourIt</span>
-        <div className="flex items-center gap-4 text-sm text-white/60">
-          <Link href="/discover" className="hover:text-white transition-colors">Discover</Link>
-          <Link href="/profile" className="hover:text-white transition-colors">Profile</Link>
-          <Link href="/account" className="bg-white text-black px-4 py-1.5 rounded-full font-medium hover:bg-white/90 transition-colors">
-            Sign in
-          </Link>
-        </div>
-      </nav>
+      <NavBar />
 
       {/* Hero */}
       <section className="px-6 pt-20 pb-16 text-center max-w-3xl mx-auto">

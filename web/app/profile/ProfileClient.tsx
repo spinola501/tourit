@@ -1,0 +1,173 @@
+"use client";
+
+import { useState } from "react";
+import { createBrowserClient } from "@/lib/db/supabase";
+import { setCookieTier } from "@/lib/hooks/useTier";
+
+const ALL_INTERESTS = [
+  { id: "history",      label: "History"          },
+  { id: "architecture", label: "Architecture"      },
+  { id: "culture",      label: "Art & Culture"     },
+  { id: "food",         label: "Food & Gastronomy" },
+  { id: "fauna",        label: "Wildlife"          },
+  { id: "flora",        label: "Nature & Flora"    },
+  { id: "geo",          label: "Geography"         },
+  { id: "lore",         label: "Legends & Lore"    },
+  { id: "funfacts",     label: "Fun Facts"         },
+  { id: "photography",  label: "Photography"       },
+];
+
+type UserProfile = {
+  id: string;
+  email: string;
+  name: string;
+  avatar_url: string | null;
+  tier: "free" | "pro";
+  home_city: string;
+  interests: string[];
+};
+
+export default function ProfileClient({ user }: { user: UserProfile }) {
+  const [name,      setName]      = useState(user.name);
+  const [homeCity,  setHomeCity]  = useState(user.home_city);
+  const [interests, setInterests] = useState<string[]>(user.interests);
+  const [saving,    setSaving]    = useState(false);
+  const [saved,     setSaved]     = useState(false);
+
+  // Keep tier cookie in sync with DB tier on mount
+  if (typeof document !== "undefined") {
+    setCookieTier(user.tier);
+  }
+
+  function toggleInterest(id: string) {
+    setInterests((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+    setSaved(false);
+  }
+
+  async function saveProfile() {
+    setSaving(true);
+    const supabase = createBrowserClient();
+    await supabase
+      .from("users")
+      .update({ name, home_city: homeCity, interests })
+      .eq("id", user.id);
+    setSaving(false);
+    setSaved(true);
+  }
+
+  const tierColor = user.tier === "pro" ? "text-yellow-400" : "text-white/50";
+
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-12 space-y-10">
+
+      {/* Avatar + name */}
+      <div className="flex items-center gap-5">
+        {user.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.avatar_url} alt={user.name} className="w-16 h-16 rounded-full object-cover" />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold text-white/40">
+            {(user.name || user.email)[0]?.toUpperCase()}
+          </div>
+        )}
+        <div>
+          <p className="font-bold text-lg">{user.name || "Your profile"}</p>
+          <p className="text-white/40 text-sm">{user.email}</p>
+          <p className={`text-sm font-semibold mt-0.5 ${tierColor}`}>
+            {user.tier === "pro" ? "★ Pro" : "Free plan"}
+          </p>
+        </div>
+      </div>
+
+      {/* Tier card */}
+      <section className="rounded-2xl border border-white/10 p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40 mb-4">Your Plan</h2>
+        {user.tier === "pro" ? (
+          <div className="flex items-center gap-3">
+            <span className="text-yellow-400 text-2xl">★</span>
+            <div>
+              <p className="font-bold">Pro</p>
+              <p className="text-sm text-white/50">All 11 content categories · Voice selection · Offline download</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-white/60 text-sm">You&apos;re on the free plan — History, Fun Facts and Practical info on every stop.</p>
+            <Link
+              href="/account"
+              className="inline-flex bg-white text-black px-5 py-2 rounded-full text-sm font-semibold hover:bg-white/90 transition-colors"
+            >
+              Upgrade to Pro →
+            </Link>
+          </div>
+        )}
+      </section>
+
+      {/* Display name + home city */}
+      <section className="rounded-2xl border border-white/10 p-6 space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40">Profile</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-white/40 mb-1 block">Display name</label>
+            <input
+              value={name}
+              onChange={(e) => { setName(e.target.value); setSaved(false); }}
+              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-white/50 transition-colors text-sm"
+              placeholder="Your name"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-white/40 mb-1 block">Home city</label>
+            <input
+              value={homeCity}
+              onChange={(e) => { setHomeCity(e.target.value); setSaved(false); }}
+              className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white placeholder:text-white/30 focus:outline-none focus:border-white/50 transition-colors text-sm"
+              placeholder="e.g. Málaga"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Interests */}
+      <section className="rounded-2xl border border-white/10 p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40 mb-2">Interests</h2>
+        <p className="text-xs text-white/30 mb-4">We&apos;ll highlight tours and stops that match what you love.</p>
+        <div className="flex flex-wrap gap-2">
+          {ALL_INTERESTS.map((interest) => {
+            const active = interests.includes(interest.id);
+            return (
+              <button
+                key={interest.id}
+                onClick={() => toggleInterest(interest.id)}
+                className={`px-4 py-2 rounded-full text-sm transition-all ${
+                  active
+                    ? "bg-white text-black font-semibold"
+                    : "bg-white/10 text-white/50 hover:bg-white/20"
+                }`}
+              >
+                {interest.label}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Save */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={saveProfile}
+          disabled={saving}
+          className="bg-white text-black px-8 py-3 rounded-full font-semibold hover:bg-white/90 transition-colors disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+        {saved && <span className="text-green-400 text-sm">Saved ✓</span>}
+      </div>
+    </div>
+  );
+}
+
+// Need this for the Link import
+import Link from "next/link";

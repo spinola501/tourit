@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { getTourById } from "@/lib/db/queries";
 import { StopPreviewCard } from "./StopPreviewCard";
+import { NavBar } from "@/components/NavBar";
 
 const CATEGORY_LABELS: Record<string, string> = {
   history: "History",
@@ -52,17 +53,7 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <Link href="/" className="font-bold text-lg tracking-tight">TourIt</Link>
-        <div className="flex items-center gap-4 text-sm text-white/60">
-          {city && (
-            <Link href={`/city/${city.slug}`} className="hover:text-white transition-colors">
-              ← {city.name}
-            </Link>
-          )}
-        </div>
-      </nav>
+      <NavBar />
 
       {/* Tour hero */}
       <div
@@ -70,6 +61,11 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
         style={{ background: `linear-gradient(180deg, ${coverColor}77 0%, transparent 100%)` }}
       >
         <div className="max-w-3xl mx-auto">
+          {city && (
+            <Link href={`/city/${city.slug}`} className="text-sm text-white/40 hover:text-white transition-colors mb-6 inline-block">
+              ← {city.name}
+            </Link>
+          )}
           <div className="flex items-center gap-2 mb-4">
             <Badge
               variant={tier === "pro" ? "default" : "secondary"}

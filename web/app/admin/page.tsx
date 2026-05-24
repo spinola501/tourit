@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [tables, setTables] = useState<Record<string, TableRow> | null>(null);
   const [seedCity, setSeedCity] = useState("darwin");
   const [seeding, setSeeding] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
   const [seedResults, setSeedResults] = useState<SeedResult[]>([]);
   const [status, setStatus] = useState("");
 
@@ -45,6 +46,22 @@ export default function AdminPage() {
     setCookieTier(t);
     setTier(t);
     setStatus(`Tier set to ${t} — active immediately`);
+  }
+
+  async function runBackfillPhotos() {
+    setBackfilling(true);
+    setStatus("Fetching Wikipedia photos for stops without one (~1 per second)…");
+    try {
+      const r = await fetch("/api/admin/backfill-photos", { method: "POST", headers: { "x-admin-secret": secret } });
+      const d = await r.json();
+      const updated = d.results?.filter((r: { status: string }) => r.status === "updated").length ?? 0;
+      const notFound = d.results?.filter((r: { status: string }) => r.status === "no photo found").length ?? 0;
+      setStatus(`Photos done — ${updated} updated, ${notFound} not found`);
+      refreshTables();
+    } catch (e) {
+      setStatus(`Error: ${e}`);
+    }
+    setBackfilling(false);
   }
 
   async function runRepair() {
@@ -206,6 +223,14 @@ export default function AdminPage() {
               title="Fix duplicates and re-sync all tour stops"
             >
               🔧 Repair
+            </button>
+            <button
+              onClick={runBackfillPhotos}
+              disabled={backfilling}
+              className="border border-white/20 hover:border-white/50 px-4 py-2 rounded-xl text-sm transition-colors disabled:opacity-40"
+              title="Fetch Wikipedia photos for all stops missing one"
+            >
+              {backfilling ? "Fetching…" : "📷 Photos"}
             </button>
           </div>
 

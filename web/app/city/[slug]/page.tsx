@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { getCityBySlug, getToursByCity } from "@/lib/db/queries";
 import { FEATURED_CITIES } from "@/lib/mock-data";
+import { NavBar } from "@/components/NavBar";
 
 const COVER_COLORS: Record<string, string> = {
   london: "#1a3a5c",
@@ -33,16 +34,7 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <Link href="/" className="font-bold text-lg tracking-tight">TourIt</Link>
-        <div className="flex items-center gap-4 text-sm text-white/60">
-          <Link href="/discover" className="hover:text-white transition-colors">Discover</Link>
-          <Link href="/account" className="bg-white text-black px-4 py-1.5 rounded-full font-medium hover:bg-white/90 transition-colors">
-            Sign in
-          </Link>
-        </div>
-      </nav>
+      <NavBar />
 
       {/* City hero */}
       <div
