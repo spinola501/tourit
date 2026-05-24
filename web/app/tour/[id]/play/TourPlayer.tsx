@@ -136,9 +136,22 @@ function useKokoro(voice: string) {
   const durationRef  = useRef(0);
   const genIdRef     = useRef(0);
 
-  // Load Kokoro; on failure, fall back to Web Speech API automatically
+  // On mobile, skip Kokoro (WASM unreliable on Android Chrome) and use Web Speech API immediately.
+  // On desktop, try Kokoro and fall back to Web Speech API on failure.
   useEffect(() => {
-    if (fallbackRef.current) return;
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobile || fallbackRef.current) {
+      if ("speechSynthesis" in window) {
+        fallbackRef.current = true;
+        setUsingFallback(true);
+        setModelState("ready");
+      } else {
+        setModelState("error");
+      }
+      return;
+    }
+
     let cancelled = false;
     ttsRef.current = null;
     setModelState("loading");
@@ -157,14 +170,12 @@ function useKokoro(voice: string) {
         if (!cancelled) { ttsRef.current = tts; setModelState("ready"); }
       } catch (err) {
         console.error("[Kokoro]", err);
-        if (!cancelled) {
-          if (typeof window !== "undefined" && "speechSynthesis" in window) {
-            fallbackRef.current = true;
-            setUsingFallback(true);
-            setModelState("ready");
-          } else {
-            setModelState("error");
-          }
+        if (!cancelled && "speechSynthesis" in window) {
+          fallbackRef.current = true;
+          setUsingFallback(true);
+          setModelState("ready");
+        } else if (!cancelled) {
+          setModelState("error");
         }
       }
     })();
