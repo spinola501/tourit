@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { createBrowserClient as ssrBrowser, createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 
 const URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -16,6 +15,7 @@ export function createBrowserClient() {
 // ── Server client (server components & route handlers) ────────────────────────
 // Reads/writes cookies so the auth session is available server-side.
 export async function createServerSupabaseClient() {
+  const { cookies } = await import("next/headers");
   const cookieStore = await cookies();
   return createServerClient(URL, ANON, {
     cookies: {
