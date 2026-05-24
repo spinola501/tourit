@@ -118,6 +118,7 @@ type ModelState = "idle" | "loading" | "ready" | "error";
 function useKokoro(voice: string) {
   const [modelState, setModelState]   = useState<ModelState>("idle");
   const [loadProgress, setLoadProgress] = useState(0);
+  const [errorKind, setErrorKind]     = useState<"headers" | "network" | "unknown">("unknown");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPlaying, setIsPlaying]     = useState(false);
   const [progress, setProgress]       = useState(0);
@@ -140,7 +141,7 @@ function useKokoro(voice: string) {
       try {
         const { KokoroTTS } = await import("kokoro-js");
         const tts = await KokoroTTS.from_pretrained("onnx-community/Kokoro-82M-v1.0", {
-          dtype: "q8",
+          dtype: "q4",
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           progress_callback: (info: any) => {
             if (!cancelled && typeof info.progress === "number")
@@ -148,8 +149,16 @@ function useKokoro(voice: string) {
           },
         });
         if (!cancelled) { ttsRef.current = tts; setModelState("ready"); }
-      } catch {
-        if (!cancelled) setModelState("error");
+      } catch (err) {
+        if (!cancelled) {
+          const msg = String(err);
+          const kind = msg.includes("SharedArrayBuffer") ? "headers"
+            : (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed to fetch")) ? "network"
+            : "unknown";
+          setErrorKind(kind);
+          setModelState("error");
+          console.error("[Kokoro]", err);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -236,20 +245,20 @@ function useKokoro(voice: string) {
 
   useEffect(() => () => { stopAudio(); audioCtxRef.current?.close(); }, [stopAudio]);
 
-  return { modelState, loadProgress, isGenerating, isPlaying, progress, speak, pause, resume: resumeAudio, stop: stopAudio };
+  return { modelState, loadProgress, errorKind, isGenerating, isPlaying, progress, speak, pause, resume: resumeAudio, stop: stopAudio };
 }
 
 // ─── Model loading banner ─────────────────────────────────────────────────────
 
-function ModelLoadingBanner({ state, progress }: { state: ModelState; progress: number }) {
+function ModelLoadingBanner({ state, progress, errorKind }: { state: ModelState; progress: number; errorKind: "headers" | "network" | "unknown" }) {
   if (state === "ready") return null;
   return (
-    <div className="flex-shrink-0 bg-white/[0.04] border-b border-white/10 px-5 py-2.5">
+    <div className="flex-shrink-0 border-b border-white/10 px-5 py-2.5 bg-white/[0.04]">
       {state === "loading" ? (
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-white/50">Loading voice engine…</p>
+              <p className="text-xs text-white/50">Loading voice engine… (~40 MB, one-time)</p>
               <p className="text-xs text-white/30">{Math.round(progress * 100)}%</p>
             </div>
             <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
@@ -258,7 +267,19 @@ function ModelLoadingBanner({ state, progress }: { state: ModelState; progress: 
           </div>
         </div>
       ) : state === "error" ? (
-        <p className="text-xs text-red-400/70">Voice engine failed to load — check connection and reload.</p>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-xs text-red-400/70">
+            {errorKind === "headers"
+              ? "Security headers missing — reload the page to try again."
+              : "Voice engine failed to load — check your connection."}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs text-white/60 hover:text-white px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0"
+          >
+            Reload
+          </button>
+        </div>
       ) : null}
     </div>
   );
@@ -487,7 +508,7 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
   const [contentLength,  setContentLength]  = useState<ContentLength>("medium");
   const [selectedDay,    setSelectedDay]    = useState(() => new Date().getDay());
 
-  const { modelState, loadProgress, isGenerating, isPlaying, progress, speak, pause, resume, stop } = useKokoro(voice);
+  const { modelState, loadProgress, errorKind, isGenerating, isPlaying, progress, speak, pause, resume, stop } = useKokoro(voice);
   const [favoriteIds, setFavoriteIds] = useState(new Set<string>());
 
   useEffect(() => {
@@ -564,7 +585,7 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
       </div>
 
       {/* Model loading banner */}
-      <ModelLoadingBanner state={modelState} progress={loadProgress} />
+      <ModelLoadingBanner state={modelState} progress={loadProgress} errorKind={errorKind} />
 
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">

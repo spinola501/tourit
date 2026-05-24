@@ -77,7 +77,7 @@ An AI-powered audio tour app that researches and narrates the story of any place
 - [x] Free activities filter — badge "Free" on stops in player sidebar + practical info card
 - [x] Free tier category gating — History/Fun Facts/Practical free; all 11 for Pro
 - [x] User report button in player ("Report issue" → 5-option dropdown → POST /api/report)
-- [ ] Save / favourite stops and tours (user_favorites table + heart button)
+- [x] Save / favourite stops and tours (user_favorites table + heart button in player + tour detail)
 - [ ] Personalised recommendations on home page based on profile interests
 - [ ] Group profile: mobility (full/seniors/wheelchair/stroller), ages, pace
 - [ ] Free tier limits: max 3 saved tours enforced
