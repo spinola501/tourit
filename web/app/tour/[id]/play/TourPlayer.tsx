@@ -369,7 +369,7 @@ function NarrationPanel({ stop, activeCategory, tier, contentLength, onCategoryC
             <p className="text-white/50 text-sm mb-6 max-w-xs">
               {CATEGORY_LABELS[activeCategory]} narration is available on the Pro plan.
             </p>
-            <Link href="/admin" className="bg-white text-black px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-colors">
+            <Link href="/account" className="bg-white text-black px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-colors">
               Upgrade to Pro
             </Link>
           </div>

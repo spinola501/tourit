@@ -32,12 +32,14 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
   const { data: { user } } = await supabase.auth.getUser();
   let favoriteIds = new Set<string>();
   if (user) {
-    const db = createAdminClient();
-    const { data: favs } = await db
-      .from("user_favorites")
-      .select("stop_id")
-      .eq("user_id", user.id);
-    favoriteIds = new Set(favs?.map((r) => r.stop_id) ?? []);
+    try {
+      const db = createAdminClient();
+      const { data: favs } = await db
+        .from("user_favorites")
+        .select("stop_id")
+        .eq("user_id", user.id);
+      favoriteIds = new Set(favs?.map((r) => r.stop_id) ?? []);
+    } catch { /* table may not exist yet */ }
   }
 
   const city = tour.cities as unknown as { slug: string; name: string; country: string; emoji: string; cover_color: string } | null;

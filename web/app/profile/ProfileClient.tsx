@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { createBrowserClient } from "@/lib/db/supabase";
 import { setCookieTier } from "@/lib/hooks/useTier";
 
@@ -169,5 +170,3 @@ export default function ProfileClient({ user }: { user: UserProfile }) {
   );
 }
 
-// Need this for the Link import
-import Link from "next/link";
