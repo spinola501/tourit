@@ -35,7 +35,7 @@ export async function getTourById(tourId: string) {
         stops(
           id, name, lat, lng, duration_minutes, tags, accessibility_note, photo_url,
           stop_content(category, language, text),
-          stop_practical(opening_hours, admission_fee, nearest_transport)
+          stop_practical(opening_hours, admission_fee, nearest_transport, last_verified_at)
         )
       )
     `)

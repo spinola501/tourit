@@ -2,6 +2,103 @@
 
 ---
 
+## Sessions 006–010 — 2026-05-30
+
+**Goal:** Admin workstation, Google OAuth, city photos, 9-language i18n, curated tour generation, Phase 3 completion and UI polish.
+
+---
+
+### Session 006 — Admin Workstation
+
+**Implemented**
+- Full admin dashboard rewrite with 5-section sidebar: Overview, Users, Content, Reports, Tools
+- 4 new API routes: `GET /api/admin/stats` (8 KPIs), `GET|POST /api/admin/users` (list + set tier), `GET|POST /api/admin/reports` (list + resolve/delete), `GET /api/admin/content-health` (per-city photo/category coverage)
+- Real-time KPI cards: cities, tours, stops, content pieces, users (free/pro split), open reports, plays, saves
+- Per-city content health table with progress bars for photo coverage and avg categories
+- User table with one-click tier toggle (free ↔ pro)
+- Reports queue with Resolve/Delete actions
+- Tools section: seed, repair, backfill, 🗺 Gen Tours button, session tier toggle
+
+**Fixes**
+- `stop_reports` schema: actual columns are `field`, `note`, `resolved` (bool) — not `reason`/`resolved_at`. Fixed `/api/report` and `/api/admin/reports` routes. Also fixed `.catch()` on Supabase query builders (v2 returns PromiseLike, not Promise).
+
+---
+
+### Session 007 — Google OAuth, Profile Redesign & City Photos
+
+**Implemented**
+- Google OAuth live: user configured Google Cloud Console (client ID + redirect URI), Supabase Auth provider enabled
+- Profile page hero: gradient indigo backdrop, 80px avatar with violet-indigo gradient fallback, tier badge pill, compact upgrade banner for free users
+- City photo infrastructure: `photo_url` column on `cities` table, `POST /api/admin/backfill-city-photos` endpoint (Wikipedia API, same pattern as stop photos), "🏙 City Photos" button in admin
+- City cards redesigned: full-bleed photo with dark overlay gradient, hover zoom (scale-105, 700ms), city name/country/tours at bottom — no more emoji-on-gradient
+
+**SQL required by user**
+```sql
+ALTER TABLE cities ADD COLUMN IF NOT EXISTS photo_url text;
+```
+
+---
+
+### Session 008 — i18n: 9 Languages with next-intl
+
+**Implemented**
+- `next-intl` v4 installed; `i18n/routing.ts` + `i18n/request.ts` configured
+- 9 locale message files: `en`, `es`, `fr`, `de`, `pt`, `it`, `ja`, `zh`, `eo` (Esperanto)
+- All pages migrated to `app/[locale]/` directory structure; old paths redirect to `/en/[path]`
+- `LanguageSwitcher` component in NavBar: flag + locale code + dropdown with all 9 languages
+- `app/[locale]/layout.tsx` sets correct `lang` attribute + loads Noto Sans JP/SC for CJK locales
+- Root `app/layout.tsx` made minimal (`return children`); `app/admin/layout.tsx` + `app/auth/layout.tsx` added as standalone html/body wrappers
+- Esperanto added as 9th language — full UI translation including player categories and auth flows
+
+**Decisions**
+- URL-based locale routing (`/en/`, `/es/`, `/eo/`) rather than cookie-based — better for SEO and link sharing
+- Sonnet used for tour generation (not Haiku) to get evocative titles; Haiku used for stop content generation
+- Tour content in DB remains English; UI chrome is translated. Full content translation in Phase 4 via DeepL lazy pipeline.
+
+---
+
+### Session 009 — Curated Tour Generation System
+
+**Implemented**
+- `lib/generation/generate-tours.ts`: Claude Sonnet designs 2–3 thematic day tours per city from the actual stop list. Fuzzy stop-name matching (exact → substring → first-3-words) to map Claude's output to real DB stop IDs.
+- `POST /api/admin/generate-tours`: deletes existing prebuilt system tours, calls Claude, creates new tours + tour_stops
+- Seed updated: no longer creates a catch-all "Classic" tour. After all stops generated, auto-calls tour designer. Result: each city gets 2–3 curated tours on first seed.
+- 9 tours generated for 3 cities — all thematic, city-specific, with proper taglines:
+  - **Darwin**: "Darwin Under Fire: The Bombed City's Wartime Soul" · "Crocs, Convicts & the Curious City" · "Top End Wild: Waterfalls, Wetlands & Wildlife Beyond Darwin"
+  - **Sydney**: "Harbour's Edge: Sandstone, Sails & Sydney Cove" · "Bohemian Inner West: Terraces, Trade & Creative Sydney" · "Clifftops & Coves: The Eastern Beaches & Coastal Edge"
+  - **London**: "Crown, Cathedral & the Medieval Mile" · "Power, Parliament & the Parks of Westminster" · "Markets, Mavericks & the North London Beat"
+- Admin "🗺 Gen Tours" button regenerates tours for any selected city on demand (~10s, ~$0.01)
+
+---
+
+### Session 010 — Phase 3 Completion & UI Polish
+
+**Implemented**
+- Home page redesigned: large serif headline "Every city. Every story." with indigo glow, 3-step "How it works" (01/02/03 numbered panels), accurate Free/Pro comparison (real pricing, correct feature list)
+- Emojis removed from all public-facing UI: city page hero, city card fallbacks → replaced with large bold city initial letter; admin quick links updated
+- Free tier save limit enforced: `POST /api/favorites` returns `403 limit_reached` after 3 saves; `FavoriteButton` shows "Pro →" upgrade link on limit
+- `last_verified_at` displayed in player practical info card ("Verified May 2026"); emoji icons in practical card replaced with SVG icons (clock, ticket, transit)
+- Personalised recommendations: home page shows "Recommended for you" heading for signed-in users with saved interests
+- Admin layout fixed (missing html/body after i18n refactor)
+- EN messages updated with accurate content reflecting current app state
+
+**Pending / Deferred to later phases**
+- Group profile (mobility, ages, pace) → Phase 5
+- Google Places API cron → Phase 5
+- Wikipedia change detection → Phase 5
+
+---
+
+## Pendiente para próxima sesión (Phase 4 kickoff)
+- [ ] **SQL** (if not done): `ALTER TABLE cities ADD COLUMN IF NOT EXISTS photo_url text;`
+- [ ] **tourit.es**: verify DNS propagation → update Supabase Auth "Site URL" + "Redirect URLs" to include `https://tourit.es`
+- [ ] **Google OAuth**: add `https://tourit.es` to Authorized JavaScript Origins in Google Cloud Console (already done? confirm)
+- [ ] **Deploy**: push all changes to GitHub → Vercel auto-deploy → verify production at tourit-sigma.vercel.app
+- [ ] **City photo backfill**: run "🏙 City Photos" in /admin for Darwin (London + Sydney likely already have photos)
+- [ ] **Phase 4 start**: Stripe subscriptions (Trip Pass €5.99/7d + Annual Pro €16.99/yr)
+
+---
+
 ## Session 001 — 2026-05-22
 
 **Goal:** Project kickoff. Define concept, scaffold web app, build core UI pages with mock data.

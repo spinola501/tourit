@@ -6,7 +6,8 @@ export async function POST(req: NextRequest) {
   if (!stop_id || !reason) return NextResponse.json({ error: "missing fields" }, { status: 400 });
 
   const db = createAdminClient();
-  await db.from("stop_reports").insert({ stop_id, reason });
+  // Schema: field (category), note (free text). Map incoming reason → note; field = "other".
+  await db.from("stop_reports").insert({ stop_id, field: "other", note: reason });
 
   return NextResponse.json({ ok: true });
 }

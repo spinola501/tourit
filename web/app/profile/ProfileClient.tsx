@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { createBrowserClient } from "@/lib/db/supabase";
 import { setCookieTier } from "@/lib/hooks/useTier";
 
@@ -35,10 +34,10 @@ export default function ProfileClient({ user }: { user: UserProfile }) {
   const [saving,    setSaving]    = useState(false);
   const [saved,     setSaved]     = useState(false);
 
-  // Keep tier cookie in sync with DB tier on mount
-  if (typeof document !== "undefined") {
+  // Keep tier cookie in sync with DB tier
+  useEffect(() => {
     setCookieTier(user.tier);
-  }
+  }, [user.tier]);
 
   function toggleInterest(id: string) {
     setInterests((prev) =>
@@ -58,53 +57,8 @@ export default function ProfileClient({ user }: { user: UserProfile }) {
     setSaved(true);
   }
 
-  const tierColor = user.tier === "pro" ? "text-yellow-400" : "text-white/50";
-
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12 space-y-10">
-
-      {/* Avatar + name */}
-      <div className="flex items-center gap-5">
-        {user.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.avatar_url} alt={user.name} className="w-16 h-16 rounded-full object-cover" />
-        ) : (
-          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-2xl font-bold text-white/40">
-            {(user.name || user.email)[0]?.toUpperCase()}
-          </div>
-        )}
-        <div>
-          <p className="font-bold text-lg">{user.name || "Your profile"}</p>
-          <p className="text-white/40 text-sm">{user.email}</p>
-          <p className={`text-sm font-semibold mt-0.5 ${tierColor}`}>
-            {user.tier === "pro" ? "★ Pro" : "Free plan"}
-          </p>
-        </div>
-      </div>
-
-      {/* Tier card */}
-      <section className="rounded-2xl border border-white/10 p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40 mb-4">Your Plan</h2>
-        {user.tier === "pro" ? (
-          <div className="flex items-center gap-3">
-            <span className="text-yellow-400 text-2xl">★</span>
-            <div>
-              <p className="font-bold">Pro</p>
-              <p className="text-sm text-white/50">All 11 content categories · Voice selection · Offline download</p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-white/60 text-sm">You&apos;re on the free plan — History, Fun Facts and Practical info on every stop.</p>
-            <Link
-              href="/account"
-              className="inline-flex bg-white text-black px-5 py-2 rounded-full text-sm font-semibold hover:bg-white/90 transition-colors"
-            >
-              Upgrade to Pro →
-            </Link>
-          </div>
-        )}
-      </section>
+    <div className="max-w-2xl mx-auto px-6 py-10 space-y-8">
 
       {/* Display name + home city */}
       <section className="rounded-2xl border border-white/10 p-6 space-y-4">
@@ -133,7 +87,7 @@ export default function ProfileClient({ user }: { user: UserProfile }) {
 
       {/* Interests */}
       <section className="rounded-2xl border border-white/10 p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40 mb-2">Interests</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40 mb-1">Interests</h2>
         <p className="text-xs text-white/30 mb-4">We&apos;ll highlight tours and stops that match what you love.</p>
         <div className="flex flex-wrap gap-2">
           {ALL_INTERESTS.map((interest) => {
@@ -169,4 +123,3 @@ export default function ProfileClient({ user }: { user: UserProfile }) {
     </div>
   );
 }
-

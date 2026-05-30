@@ -35,8 +35,21 @@ export async function POST(req: NextRequest) {
   if (existing) {
     await db.from("user_favorites").delete().eq("id", existing.id);
     return NextResponse.json({ favorited: false });
-  } else {
-    await db.from("user_favorites").insert({ user_id: user.id, stop_id });
-    return NextResponse.json({ favorited: true });
   }
+
+  // Free tier limit: max 3 saved stops
+  const { data: profile } = await db.from("users").select("tier").eq("id", user.id).single();
+  const tier = (profile?.tier as string) ?? "free";
+  if (tier === "free") {
+    const { count } = await db
+      .from("user_favorites")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if ((count ?? 0) >= 3) {
+      return NextResponse.json({ error: "limit_reached", message: "Free plan saves up to 3 stops. Upgrade to Pro for unlimited." }, { status: 403 });
+    }
+  }
+
+  await db.from("user_favorites").insert({ user_id: user.id, stop_id });
+  return NextResponse.json({ favorited: true });
 }

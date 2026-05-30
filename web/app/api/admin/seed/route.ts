@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateStop } from "@/lib/generation/generate-stop";
 import { createAdminClient } from "@/lib/db/supabase";
 import { fetchWikipediaPhoto } from "@/lib/photos/wikipedia";
+import { generateToursForCity, matchStopName } from "@/lib/generation/generate-tours";
 
 const SEED_STOPS = [
   {
@@ -230,43 +231,8 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    // Get or create tour upfront so each stop can be linked immediately
-    let { data: tourRecord } = await db
-      .from("tours")
-      .select("id")
-      .eq("city_id", cityRecord.id)
-      .eq("type", "prebuilt")
-      .single();
-
-    if (!tourRecord) {
-      const { data: newTour } = await db
-        .from("tours")
-        .insert({
-          city_id: cityRecord.id,
-          title: `${city.cityName} Classic`,
-          tagline: `The essential ${city.cityName} experience — iconic landmarks, hidden history, unforgettable stories.`,
-          type: "prebuilt",
-          tier_required: "free",
-          cover_color: (city as { coverColor?: string }).coverColor ?? "#1a3a5c",
-          is_official: true,
-        })
-        .select("id")
-        .single();
-      tourRecord = newTour;
-    }
-
-    // Get current highest order_index so new stops are appended in order
-    const { data: existingTourStops } = await db
-      .from("tour_stops")
-      .select("order_index, stop_id")
-      .eq("tour_id", tourRecord?.id ?? "")
-      .order("order_index", { ascending: false })
-      .limit(1);
-
-    let nextOrderIndex = (existingTourStops?.[0]?.order_index ?? -1) + 1;
-    const linkedStopIds = new Set(
-      (await db.from("tour_stops").select("stop_id").eq("tour_id", tourRecord?.id ?? "")).data?.map((r) => r.stop_id) ?? []
-    );
+    // Track newly generated stop IDs for tour assignment after the loop
+    const generatedStopIds: string[] = [];
 
     for (const stop of city.stops) {
       // Skip if already generated (check by name — case-insensitive)
@@ -278,11 +244,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle();
 
       if (existing) {
-        // Link to tour if not already linked
-        if (tourRecord && !linkedStopIds.has(existing.id)) {
-          await db.from("tour_stops").insert({ tour_id: tourRecord.id, stop_id: existing.id, order_index: nextOrderIndex++ });
-          linkedStopIds.add(existing.id);
-        }
+        generatedStopIds.push(existing.id);
         results.push({ stop: stop.name, status: "skipped (already exists)" });
         continue;
       }
@@ -335,12 +297,7 @@ export async function POST(req: NextRequest) {
           }))
         );
 
-        // Link to tour immediately
-        if (tourRecord) {
-          await db.from("tour_stops").insert({ tour_id: tourRecord.id, stop_id: newStop.id, order_index: nextOrderIndex++ });
-          linkedStopIds.add(newStop.id);
-        }
-
+        generatedStopIds.push(newStop.id);
         results.push({ stop: stop.name, status: "generated" });
         console.log(`✓ ${stop.name}`);
       } catch (err) {
@@ -352,7 +309,70 @@ export async function POST(req: NextRequest) {
       await sleep(3000);
     }
 
-    results.push({ stop: `${city.cityName} Classic`, status: `tour has ${nextOrderIndex} stops` });
+    // ── Auto-generate curated tours now that all stops exist ──────────────────
+    try {
+      // Fetch full stop details for the tour designer
+      const { data: allStops } = await db
+        .from("stops")
+        .select("id, name, lat, lng, duration_minutes, tags")
+        .eq("city_id", cityRecord.id);
+
+      const stopsForTour = (allStops ?? []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        lat: s.lat ?? 0,
+        lng: s.lng ?? 0,
+        duration_minutes: s.duration_minutes ?? 45,
+        tags: (s.tags as string[]) ?? [],
+      }));
+
+      if (stopsForTour.length >= 5) {
+        // Replace existing prebuilt system tours
+        await db
+          .from("tours")
+          .delete()
+          .eq("city_id", cityRecord.id)
+          .eq("type", "prebuilt")
+          .eq("is_official", true);
+
+        const plans = await generateToursForCity(
+          { name: city.cityName, country: city.country },
+          stopsForTour
+        );
+
+        for (const plan of plans) {
+          const { data: tour } = await db
+            .from("tours")
+            .insert({
+              city_id: cityRecord.id,
+              title: plan.title,
+              tagline: plan.tagline,
+              type: "prebuilt",
+              tier_required: "free",
+              cover_color: (city as { coverColor?: string }).coverColor ?? "#1a3a5c",
+              is_official: true,
+            })
+            .select("id")
+            .single();
+
+          if (!tour) continue;
+
+          let orderIdx = 0;
+          for (const stopName of plan.stop_names) {
+            const matched = matchStopName(stopName, stopsForTour);
+            if (matched) {
+              await db.from("tour_stops")
+                .insert({ tour_id: tour.id, stop_id: matched.id, order_index: orderIdx });
+              orderIdx++;
+            }
+          }
+          results.push({ stop: `📍 Tour: ${plan.title}`, status: `${orderIdx} stops` });
+        }
+      }
+    } catch (tourErr) {
+      const msg = tourErr instanceof Error ? tourErr.message : "Unknown";
+      results.push({ stop: `Tour generation`, status: "error", error: msg });
+    }
   }
 
   return NextResponse.json({ results });

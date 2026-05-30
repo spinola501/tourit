@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/db/supabase";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 export async function NavBar() {
-  const supabase = await createServerSupabaseClient();
+  const [supabase, t] = await Promise.all([
+    createServerSupabaseClient(),
+    getTranslations("nav"),
+  ]);
   const { data: { user } } = await supabase.auth.getUser();
 
   let tier: "free" | "pro" = "free";
@@ -24,8 +29,10 @@ export async function NavBar() {
   return (
     <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
       <Link href="/" className="font-bold text-lg tracking-tight">TourIt</Link>
-      <div className="flex items-center gap-4 text-sm text-white/60">
-        <Link href="/discover" className="hover:text-white transition-colors">Discover</Link>
+      <div className="flex items-center gap-3 text-sm text-white/60">
+        <Link href="/discover" className="hover:text-white transition-colors">{t("discover")}</Link>
+
+        <LanguageSwitcher />
 
         {user ? (
           <div className="flex items-center gap-3">
@@ -49,7 +56,7 @@ export async function NavBar() {
             href="/auth/login"
             className="bg-white text-black px-4 py-1.5 rounded-full font-medium hover:bg-white/90 transition-colors"
           >
-            Sign in
+            {t("signIn")}
           </Link>
         )}
       </div>

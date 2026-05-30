@@ -41,15 +41,12 @@ An AI-powered audio tour app that researches and narrates the story of any place
 - [x] Tavily web search integration — research per stop
 - [x] Claude API integration — generate all 11 categories per stop with prompt caching
 - [x] Zod schema validation on generation output
-- [x] `/api/generate/stop` route — takes stop name + city + coords → returns structured content (`/api/admin/seed` covers this inline)
-- [ ] `/api/generate/tour` route — takes city + tour type → assembles stops + generates transitions
-- [ ] Cities seed list — 250 cities with coordinates, emoji, cover colour
-- [ ] Stops seed list — 5,000 stops across 200 cities (name, coords, city)
 - [x] Batch seed script with rate limiting + resumability (skips already-generated stops)
-- [ ] ElevenLabs TTS integration — lazy audio generation on first play, stored in Cloudflare R2
 - [x] Connect player to real Supabase data (replace mock)
-- [ ] Stop engagement analytics logging (`stop_plays` table)
-- [ ] Pre-generate Tier 1 cities: London, Paris, Rome, NYC, Tokyo, Barcelona (test run) — London ✓, Sydney ✓, Darwin ✓ (AU testing); Paris, Rome, NYC pending
+- [x] Pre-generate AU cities: London ✓, Sydney ✓, Darwin ✓ (77 stops, 847 content pieces, 100% coverage)
+- [ ] ElevenLabs/cloud TTS integration — lazy audio, stored in Cloudflare R2 (deferred; Kokoro covers this for now)
+- [ ] Stop engagement analytics logging (`stop_plays` table) — table exists, logging not yet wired
+- [ ] Pre-generate Tier 1 cities: Paris, Rome, NYC, Tokyo, Barcelona (pending)
 
 ---
 
@@ -63,30 +60,58 @@ An AI-powered audio tour app that researches and narrates the story of any place
 - [x] Retractable stops sidebar (‹/› toggle, collapses to numbered icon strip)
 - [x] Stop info preview without autoplay — click stop to read, play button to listen
 - [x] Content length toggle: Short (120w) / Medium (300w) / Full — applied to both text and audio
-- [x] Day-of-week selector + closed-stop warnings (⚠ badge in sidebar, banner in stop header)
+- [x] Day-of-week selector + closed-stop warnings (badge in sidebar, banner in stop header)
 - [x] Expandable stop cards on tour detail page — full narration preview before starting tour
+- [x] Practical info card: SVG icons, `last_verified_at` timestamp displayed
 
 ---
 
-## Phase 3 — Auth, Profiles & Freshness ✦ Current
+## Phase 2.6 — Tour Catalogue & Admin Workstation ✅ Complete (2026-05-30)
+**Goal:** Curated day tours per city, proper admin dashboard.
+
+- [x] Claude-powered tour generator — designs 2–3 thematic day tours per city from stop list (`lib/generation/generate-tours.ts`)
+- [x] Auto-generates tours at end of seed run; "🗺 Gen Tours" button in admin for on-demand regeneration
+- [x] 9 curated tours across 3 cities (Darwin, Sydney, London) — all thematic with proper taglines
+- [x] City photos: `photo_url` on `cities` table, Wikipedia backfill endpoint, admin "🏙 City Photos" button
+- [x] Admin workstation rewrite: 5-section sidebar (Overview, Users, Content, Reports, Tools)
+- [x] Admin API: `/api/admin/stats`, `/api/admin/users` (+ tier toggle), `/api/admin/reports` (+ resolve/delete), `/api/admin/content-health`
+
+---
+
+## Phase 3 — Auth, Profiles & Freshness ✅ Complete (2026-05-30)
 **Goal:** Users can sign in, set preferences, save tours. Practical info stays fresh automatically.
 
-- [x] Supabase Auth (email + Google OAuth)
+- [x] Supabase Auth (email + Google OAuth) — live and tested
 - [x] User profile: name, home city, interest tags, tier display
 - [x] Interest tags on profile (10 categories) — stored in public.users.interests[]
 - [x] Free activities filter — badge "Free" on stops in player sidebar + practical info card
 - [x] Free tier category gating — History/Fun Facts/Practical free; all 11 for Pro
-- [x] User report button in player ("Report issue" → 5-option dropdown → POST /api/report)
-- [x] Save / favourite stops and tours (user_favorites table + heart button in player + tour detail)
-- [ ] Personalised recommendations on home page based on profile interests
-- [ ] Group profile: mobility (full/seniors/wheelchair/stroller), ages, pace
-- [ ] Free tier limits: max 3 saved tours enforced
-- [ ] `last_verified_at` shown on practical info in player
-- [ ] Google Places API cron job — weekly re-fetch of practical info for all stops
-- [ ] Wikipedia change detection — flag stops whose articles changed for narration review
-- [ ] Admin dashboard: review flagged stops, one-click regenerate, resolve reports
-- [ ] next-intl setup — URL locale routing (`/en/`, `/es/`)
-- [ ] UI translation files: EN, ES, FR (Phase 3 launch languages)
+- [x] User report button in player ("Report issue" → 5-option dropdown)
+- [x] Save / favourite stops (user_favorites table + heart button in player + profile page)
+- [x] Free tier limits: max 3 saved stops enforced (API + UI shows "Pro →" on limit)
+- [x] Personalised recommendations — home page "Recommended for you" for signed-in users
+- [x] `last_verified_at` shown on practical info card in player
+- [x] Admin dashboard — full workstation with 5 sections, user/report/content management
+- [x] next-intl setup — URL locale routing (`/en/`, `/es/`, `/eo/` etc.)
+- [x] UI translation files: 9 languages — EN, ES, FR, DE, PT, IT, JA, ZH, **EO (Esperanto)**
+- [x] Home page redesigned: hero glow, 3-step "How it works", accurate Free/Pro comparison
+- [x] Emojis removed from all public UI (city initials as fallback)
+- [ ] Group profile: mobility/ages/pace — deferred to Phase 5
+- [ ] Google Places API cron — deferred to Phase 5
+- [ ] Wikipedia change detection — deferred to Phase 5
+
+---
+
+## ⚠️ Pre-Phase 4 Checklist
+
+Before starting Phase 4, confirm these are done:
+
+- [ ] **SQL**: `ALTER TABLE cities ADD COLUMN IF NOT EXISTS photo_url text;` (if not already run)
+- [ ] **City photos**: Run "🏙 City Photos" in `/admin` for Darwin (London + Sydney should have photos)
+- [ ] **tourit.es DNS**: Verify propagation → update Supabase Auth Site URL + Redirect URLs to `https://tourit.es`
+- [ ] **Google OAuth**: Confirm `https://tourit.es` is in Authorized JavaScript Origins in Google Cloud Console
+- [ ] **Deploy**: Push to GitHub → Vercel auto-deploy → smoke test production URL
+- [ ] **Stripe account**: Create Stripe account, note publishable + secret keys (needed for Phase 4)
 
 ---
 

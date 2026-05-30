@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 
 type City = {
   slug: string;
@@ -10,6 +9,7 @@ type City = {
   country: string;
   emoji: string | null;
   cover_color: string | null;
+  photo_url: string | null;
   tours: unknown;
 };
 
@@ -51,15 +51,33 @@ export function CitySearchGrid({ cities, initialQ = "" }: { cities: City[]; init
                 <Link
                   key={city.slug}
                   href={`/city/${city.slug}`}
-                  className="group relative rounded-2xl p-5 border border-white/10 hover:border-white/30 transition-all duration-200 hover:-translate-y-0.5"
-                  style={{ background: `linear-gradient(135deg, ${coverColor}99 0%, ${coverColor}33 100%)` }}
+                  className="group relative rounded-2xl overflow-hidden aspect-[4/3] block"
                 >
-                  <div className="text-3xl mb-3">{city.emoji ?? "🏙️"}</div>
-                  <div className="font-semibold text-white">{city.name}</div>
-                  <div className="text-xs text-white/50 mb-2">{city.country}</div>
-                  <Badge variant="secondary" className="bg-white/10 text-white/70 text-xs border-0">
-                    {tourCount} {tourCount === 1 ? "tour" : "tours"}
-                  </Badge>
+                  {city.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={city.photo_url}
+                      alt={city.name}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{ background: `linear-gradient(135deg, ${coverColor}cc 0%, ${coverColor}44 100%)` }}
+                    >
+                      <span className="text-5xl opacity-30 select-none">{city.emoji ?? "🏙️"}</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-300" />
+                  <div className="absolute inset-x-0 bottom-0 p-4">
+                    <p className="font-semibold text-white text-base leading-tight">{city.name}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-white/60 text-xs">{city.country}</span>
+                      <span className="text-white/30 text-xs">·</span>
+                      <span className="text-white/50 text-xs">{tourCount} {tourCount === 1 ? "tour" : "tours"}</span>
+                    </div>
+                  </div>
                 </Link>
               );
             })}
