@@ -20,8 +20,8 @@ function isFreeAdmission(fee: string | null | undefined): boolean {
   return t === "free" || t.startsWith("free") || t === "€0" || t === "$0" || t === "0";
 }
 
-export default async function CityPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default async function CityPage({ params }: { params: Promise<{ slug: string; locale: string }> }) {
+  const { slug, locale } = await params;
 
   const dbCity = await getCityBySlug(slug);
   const mockCity = FEATURED_CITIES.find((c) => c.slug === slug);
@@ -62,7 +62,7 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
         style={{ background: `linear-gradient(180deg, ${city.coverColor}66 0%, transparent 100%)` }}
       >
         <div className="max-w-4xl mx-auto">
-          <Link href="/discover" className="text-sm text-white/40 hover:text-white transition-colors mb-6 inline-block">
+          <Link href={`/${locale}/discover`} className="text-sm text-white/40 hover:text-white transition-colors mb-6 inline-block">
             ← All cities
           </Link>
           <h1 className="text-4xl font-bold mb-1">{city.name}</h1>
@@ -95,7 +95,7 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
                 return (
                   <Link
                     key={tour.id}
-                    href={`/tour/${tour.id}`}
+                    href={`/${locale}/tour/${tour.id}`}
                     className="group rounded-2xl border border-white/10 hover:border-white/30 p-6 transition-all hover:-translate-y-0.5 block relative overflow-hidden"
                     style={{ background: `linear-gradient(135deg, ${coverColor}44 0%, transparent 100%)` }}
                   >
@@ -141,7 +141,7 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
                 </p>
               </div>
               {userTier === "free" && (
-                <Link href="/account" className="text-xs text-white/50 hover:text-white border border-white/20 hover:border-white/40 px-3 py-1.5 rounded-full transition-colors flex-shrink-0">
+                <Link href={`/${locale}/account`} className="text-xs text-white/50 hover:text-white border border-white/20 hover:border-white/40 px-3 py-1.5 rounded-full transition-colors flex-shrink-0">
                   ★ Go Pro
                 </Link>
               )}
@@ -172,7 +172,7 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
                     <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center text-white/20 text-xs font-bold">
                       {s.photo_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={s.photo_url} alt={s.name} className="w-full h-full object-cover" />
+                        <img src={s.photo_url} alt={s.name} loading="lazy" className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-lg" style={{ color: city.coverColor }}>{s.name[0]}</span>
                       )}
@@ -209,7 +209,7 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
               <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center">
                 <p className="font-semibold mb-1">Build your own tour</p>
                 <p className="text-sm text-white/50 mb-4">Pro users can select any stops and create a custom tour that others can follow.</p>
-                <Link href="/account" className="inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-colors">
+                <Link href={`/${locale}/account`} className="inline-flex items-center gap-2 bg-white text-black px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-white/90 transition-colors">
                   ★ Upgrade to Pro
                 </Link>
               </div>

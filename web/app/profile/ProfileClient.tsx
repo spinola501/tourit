@@ -33,6 +33,7 @@ export default function ProfileClient({ user }: { user: UserProfile }) {
   const [interests, setInterests] = useState<string[]>(user.interests);
   const [saving,    setSaving]    = useState(false);
   const [saved,     setSaved]     = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   // Keep tier cookie in sync with DB tier
   useEffect(() => {
@@ -48,13 +49,15 @@ export default function ProfileClient({ user }: { user: UserProfile }) {
 
   async function saveProfile() {
     setSaving(true);
+    setSaveError("");
     const supabase = createBrowserClient();
-    await supabase
+    const { error } = await supabase
       .from("users")
       .update({ name, home_city: homeCity, interests })
       .eq("id", user.id);
     setSaving(false);
-    setSaved(true);
+    if (error) setSaveError(error.message);
+    else setSaved(true);
   }
 
   return (
@@ -119,6 +122,7 @@ export default function ProfileClient({ user }: { user: UserProfile }) {
           {saving ? "Saving…" : "Save changes"}
         </button>
         {saved && <span className="text-green-400 text-sm">Saved ✓</span>}
+        {saveError && <span className="text-red-400 text-sm">{saveError}</span>}
       </div>
     </div>
   );

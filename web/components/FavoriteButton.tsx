@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useLocale } from "next-intl";
 
 export function FavoriteButton({
   stopId,
@@ -15,12 +16,15 @@ export function FavoriteButton({
   const [favorited, setFavorited] = useState(initialFavorited);
   const [loading, setLoading] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
+  const [error, setError] = useState(false);
+  const locale = useLocale();
 
   async function toggle(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     if (limitReached) return;
     setLoading(true);
+    setError(false);
     try {
       const res = await fetch("/api/favorites", {
         method: "POST",
@@ -33,7 +37,11 @@ export function FavoriteButton({
       } else if (res.ok) {
         setFavorited(data.favorited);
         setLimitReached(false);
+      } else {
+        setError(true);
       }
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -44,8 +52,9 @@ export function FavoriteButton({
   if (limitReached) {
     return (
       <Link
-        href="/account"
+        href={`/${locale}/account`}
         onClick={(e) => e.stopPropagation()}
+        aria-label="Upgrade to Pro to save more stops"
         className="text-xs text-white/40 hover:text-white/70 border border-white/15 hover:border-white/30 px-2.5 py-1 rounded-full transition-colors flex-shrink-0"
       >
         Pro →
@@ -57,9 +66,12 @@ export function FavoriteButton({
     <button
       onClick={toggle}
       disabled={loading}
+      aria-label={favorited ? "Remove from saved stops" : "Save this stop"}
       title={favorited ? "Remove from saved" : "Save stop"}
       className={`${base} w-7 h-7 flex items-center justify-center rounded-full transition-all disabled:opacity-50 flex-shrink-0 ${
-        favorited
+        error
+          ? "text-red-400/50"
+          : favorited
           ? "text-red-400 bg-red-400/10 hover:bg-red-400/20"
           : "text-white/25 hover:text-white/60 hover:bg-white/10"
       }`}

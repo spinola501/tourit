@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useLocale } from "next-intl";
 import { useTier } from "@/lib/hooks/useTier";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import type { PlayerTour, PlayerStop } from "./page";
@@ -587,6 +588,7 @@ function AudioControls({ stop, stopIndex, totalStops, isPlaying, isGenerating, p
 
 export default function TourPlayer({ tour }: { tour: PlayerTour }) {
   const tier = useTier();
+  const locale = useLocale();
   const [stopIndex,      setStopIndex]      = useState(0);
   const [activeCategory, setActiveCategory] = useState("history");
   const [gpsMode,        setGpsMode]        = useState(false);
@@ -660,7 +662,7 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
 
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10 flex-shrink-0 bg-white dark:bg-[#111]">
-          <Link href={`/tour/${tour.id}`} onClick={() => stop()} className="text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white text-sm transition-colors">
+          <Link href={`/${locale}/tour/${tour.id}`} onClick={() => stop()} className="text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white text-sm transition-colors">
             ← Back
           </Link>
           <div className="text-center">
@@ -795,6 +797,7 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
                     <select
                       value={voice}
                       onChange={(e) => { setVoice(e.target.value); stop(); }}
+                      style={{ colorScheme: "dark" }}
                       className="w-full text-xs bg-slate-200 dark:bg-white/10 border border-slate-300 dark:border-white/20 rounded-lg px-2 py-1 text-slate-700 dark:text-white/60 focus:outline-none focus:border-slate-400 dark:focus:border-white/40"
                     >
                       {VOICES.map((v) => (

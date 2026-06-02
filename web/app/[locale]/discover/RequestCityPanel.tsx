@@ -115,6 +115,7 @@ export function RequestCityPanel() {
             value={language}
             onChange={(e) => setLanguage(e.target.value as Locale)}
             disabled={running}
+            style={{ colorScheme: "dark" }}
             className="bg-white/10 border border-white/20 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-white/50 transition-colors disabled:opacity-50"
           >
             {locales.map((l) => (

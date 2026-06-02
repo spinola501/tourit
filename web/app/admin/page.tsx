@@ -579,6 +579,7 @@ function ToolsSection({ secret }: { secret: string }) {
         <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-3">Generate Content</h3>
         <div className="flex gap-3 mb-4 flex-wrap">
           <select value={seedCity} onChange={(e) => setSeedCity(e.target.value)}
+            style={{ colorScheme: "dark" }}
             className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white text-sm focus:outline-none">
             {["darwin", "sydney", "london", "paris", "rome", "nyc", "tokyo", "barcelona"].map((c) => (
               <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>

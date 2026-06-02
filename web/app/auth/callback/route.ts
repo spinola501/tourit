@@ -5,13 +5,17 @@ export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
   const upgrade = searchParams.get("upgrade");
-  const next = searchParams.get("next") ?? "/en/profile";
+  // Preserve locale from next param or referer, fall back to "en"
+  const nextParam = searchParams.get("next");
+  const referer = req.headers.get("referer") ?? "";
+  const localeMatch = referer.match(/\/([a-z]{2})(\/|$)/);
+  const locale = localeMatch ? localeMatch[1] : "en";
+  const next = nextParam ?? `/${locale}/profile`;
 
   if (code) {
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data.user) {
-      // Auto-upgrade to Pro if invited with upgrade=pro
       if (upgrade === "pro") {
         const db = createAdminClient();
         await db.from("users").upsert({ id: data.user.id, tier: "pro" }, { onConflict: "id" });
@@ -20,5 +24,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/en/auth/login?error=auth_failed`);
+  return NextResponse.redirect(`${origin}/${locale}/auth/login?error=auth_failed`);
 }
