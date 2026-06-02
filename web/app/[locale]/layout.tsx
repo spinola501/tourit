@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_JP, Noto_Sans_SC } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
