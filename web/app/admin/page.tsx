@@ -453,6 +453,9 @@ function ToolsSection({ secret }: { secret: string }) {
   const [repairing, setRepairing] = useState(false);
   const [seedResults, setSeedResults] = useState<SeedResult[]>([]);
   const [status, setStatus] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteLog, setInviteLog] = useState<{ email: string; result: string }[]>([]);
 
   useEffect(() => { setTier(getCookieTier()); }, []);
 
@@ -507,6 +510,31 @@ function ToolsSection({ secret }: { secret: string }) {
     const d = await r.json();
     setStatus(d.log?.join("\n") ?? "Repair complete.");
     setRepairing(false);
+  }
+
+  async function sendInvite() {
+    if (!inviteEmail.trim() || inviting) return;
+    setInviting(true);
+    try {
+      const r = await fetch("/api/admin/invite", {
+        method: "POST",
+        headers: { "x-admin-secret": secret, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail.trim() }),
+      });
+      const d = await r.json();
+      if (d.error) {
+        setInviteLog((prev) => [{ email: inviteEmail, result: `Error: ${d.error}` }, ...prev]);
+      } else {
+        const label = d.status === "upgraded"
+          ? `Upgraded to Pro`
+          : `Invite sent`;
+        setInviteLog((prev) => [{ email: inviteEmail, result: label }, ...prev]);
+        setInviteEmail("");
+      }
+    } catch (e) {
+      setInviteLog((prev) => [{ email: inviteEmail, result: `Error: ${e}` }, ...prev]);
+    }
+    setInviting(false);
   }
 
   async function runBackfillPhotos(endpoint: string, label: string) {
@@ -600,6 +628,42 @@ function ToolsSection({ secret }: { secret: string }) {
           </button>
         </div>
         <p className="text-xs text-white/25 mt-3">~1 request/second per Wikipedia rate limit. Keep this tab open.</p>
+      </div>
+
+      {/* Pro Invitations */}
+      <div className="rounded-xl border border-white/10 p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-1">Pro Invitations</h3>
+        <p className="text-xs text-white/30 mb-4">Upgrade an existing user instantly, or send a Pro invite to a new email.</p>
+        <div className="flex gap-3 mb-3">
+          <input
+            type="email"
+            placeholder="user@example.com"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendInvite()}
+            disabled={inviting}
+            className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-white/50 transition-colors disabled:opacity-50"
+          />
+          <button
+            onClick={sendInvite}
+            disabled={inviting || !inviteEmail.trim()}
+            className="bg-yellow-400 text-black px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-40 whitespace-nowrap"
+          >
+            {inviting ? "Sending…" : "Grant Pro"}
+          </button>
+        </div>
+        {inviteLog.length > 0 && (
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {inviteLog.map((l, i) => (
+              <div key={i} className={`flex justify-between text-xs px-3 py-1.5 rounded-lg ${
+                l.result.startsWith("Error") ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"
+              }`}>
+                <span className="truncate mr-2">{l.email}</span>
+                <span className="flex-shrink-0">{l.result}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Status output */}
