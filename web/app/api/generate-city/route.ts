@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: "Pro required" }), { status: 403 });
   }
 
-  const { cityName, country } = await req.json();
+  const { cityName, country, language = "en" } = await req.json();
   if (!cityName || !country) {
     return new Response(JSON.stringify({ error: "cityName and country required" }), { status: 400 });
   }
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
               country: plan.country,
               lat: stop.lat,
               lng: stop.lng,
-              language: "en",
+              language,
             });
 
             const photoUrl = await fetchWikipediaPhoto(stop.name, `${stop.name}, ${plan.cityName}`).catch(() => null);
