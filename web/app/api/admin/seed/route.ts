@@ -1,3 +1,4 @@
+import { isAdminAuthorised } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { generateStop } from "@/lib/generation/generate-stop";
 import { createAdminClient } from "@/lib/db/supabase";
@@ -178,7 +179,7 @@ const SEED_STOPS = [
 ];
 
 function isAuthorised(req: NextRequest) {
-  return req.headers.get("x-admin-secret") === process.env.ADMIN_SECRET;
+  return isAdminAuthorised(req);
 }
 
 // Rate limit: wait between API calls to stay within quotas

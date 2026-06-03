@@ -1,9 +1,10 @@
+import { isAdminAuthorised } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/db/supabase";
 import { generateToursForCity, matchStopName } from "@/lib/generation/generate-tours";
 
 function auth(req: NextRequest) {
-  return req.headers.get("x-admin-secret") === process.env.ADMIN_SECRET;
+  return isAdminAuthorised(req);
 }
 
 export async function POST(req: NextRequest) {

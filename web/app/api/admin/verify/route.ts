@@ -1,8 +1,9 @@
+import { isAdminAuthorised } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/db/supabase";
 
 function isAuthorised(req: NextRequest) {
-  return req.headers.get("x-admin-secret") === process.env.ADMIN_SECRET;
+  return isAdminAuthorised(req);
 }
 
 const EXPECTED_TABLES = [
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: allGood,
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    
     tables: results,
   });
 }

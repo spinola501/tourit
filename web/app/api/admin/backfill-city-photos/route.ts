@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const db = createAdminClient();
   const { data: cities, error } = await db
     .from("cities")
-    .select("id, name, slug")
+    .select("id, name, slug, country")
     .is("photo_url", null);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -20,13 +20,24 @@ export async function POST(req: NextRequest) {
   const results: { name: string; status: string }[] = [];
 
   for (const city of cities) {
-    // Use "City, Country" disambiguation to avoid e.g. "Darwin" returning the scientist
-    const { data: cityRow } = await db.from("cities").select("country").eq("id", city.id).single();
-    const country = cityRow?.country ?? "";
-    const photoUrl = await fetchWikipediaPhoto(
-      `${city.name}, ${country}`,
-      `${city.name} city`
+    // Try: "City, Country" → "City" → first stop photo
+    let photoUrl = await fetchWikipediaPhoto(
+      `${city.name}, ${city.country}`,
+      city.name
     ).catch(() => null);
+
+    if (!photoUrl) {
+      // Fall back to first stop with a photo
+      const { data: stopWithPhoto } = await db
+        .from("stops")
+        .select("photo_url")
+        .eq("city_id", city.id)
+        .not("photo_url", "is", null)
+        .limit(1)
+        .maybeSingle();
+      photoUrl = stopWithPhoto?.photo_url ?? null;
+    }
+
     if (photoUrl) {
       await db.from("cities").update({ photo_url: photoUrl }).eq("id", city.id);
       results.push({ name: city.name, status: "updated" });

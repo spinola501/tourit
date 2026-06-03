@@ -1,8 +1,9 @@
+import { isAdminAuthorised } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 function isAuthorised(req: NextRequest) {
-  return req.headers.get("x-admin-secret") === process.env.ADMIN_SECRET;
+  return isAdminAuthorised(req);
 }
 
 export async function POST(req: NextRequest) {

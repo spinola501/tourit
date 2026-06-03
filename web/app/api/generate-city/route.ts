@@ -40,6 +40,12 @@ async function runGeneration(
     let cityRecord: { id: string; slug: string } | null = existing;
 
     if (!cityRecord) {
+      // Fetch city photo before inserting (try "City, Country" and "City" as fallbacks)
+      const cityPhotoUrl = await fetchWikipediaPhoto(
+        `${plan.cityName}, ${plan.country}`,
+        plan.cityName
+      ).catch(() => null);
+
       const { data: newCity } = await db.from("cities").insert({
         slug,
         name: plan.cityName,
@@ -47,6 +53,7 @@ async function runGeneration(
         cover_color: plan.coverColor,
         lat: plan.stops[0]?.lat ?? 0,
         lng: plan.stops[0]?.lng ?? 0,
+        photo_url: cityPhotoUrl,
       }).select("id, slug").single();
       cityRecord = newCity;
     }
@@ -54,6 +61,7 @@ async function runGeneration(
     if (!cityRecord) throw new Error("Failed to create city");
 
     const generatedStopIds: string[] = [];
+    let firstStopPhotoUrl: string | null = null; // fallback for city photo if needed
 
     for (const stop of plan.stops) {
       // Skip duplicates
@@ -70,7 +78,11 @@ async function runGeneration(
           language,
         });
 
-        const photoUrl = await fetchWikipediaPhoto(stop.name, `${stop.name}, ${plan.cityName}`).catch(() => null);
+        const photoUrl = await fetchWikipediaPhoto(
+          `${stop.name} ${plan.cityName}`,
+          stop.name
+        ).catch(() => null);
+        if (photoUrl && !firstStopPhotoUrl) firstStopPhotoUrl = photoUrl;
 
         const { data: newStop } = await db.from("stops").insert({
           city_id: cityRecord.id,
@@ -100,6 +112,14 @@ async function runGeneration(
           );
         }
       } catch { /* continue on individual stop error */ }
+    }
+
+    // If city has no photo yet, use first stop photo as fallback
+    if (firstStopPhotoUrl) {
+      const { data: cityCheck } = await db.from("cities").select("photo_url").eq("id", cityRecord.id).single();
+      if (!cityCheck?.photo_url) {
+        await db.from("cities").update({ photo_url: firstStopPhotoUrl }).eq("id", cityRecord.id);
+      }
     }
 
     // Generate tours
@@ -142,14 +162,15 @@ async function runGeneration(
       </div>`
     );
   } catch (err) {
-    // Send failure email
+    // Log the real error server-side only — never expose to email/client
+    console.error("[generate-city] failed:", { cityName, err: String(err) });
     await sendEmail(
       userEmail,
       `Tour generation failed for ${cityName}`,
       `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#0d0d0d;color:#fff;border-radius:12px">
         <h2 style="margin:0 0 8px">Something went wrong</h2>
-        <p style="color:#aaa">We couldn't generate the tour for ${cityName}. Error: ${String(err)}</p>
-        <p style="color:#aaa">Please try again from the Discover page.</p>
+        <p style="color:#aaa">We couldn't generate the tour for ${cityName}. Please try again from the Discover page.</p>
+        <p style="color:#555;font-size:12px">TourIt · Every place has a story</p>
       </div>`
     ).catch(() => {});
   }
@@ -164,7 +185,11 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await db.from("users").select("tier").eq("id", user.id).single();
   if (profile?.tier !== "pro") return NextResponse.json({ error: "Pro required" }, { status: 403 });
 
-  const { cityName, country, language = "en" } = await req.json();
+  const body = await req.json().catch(() => ({}));
+  // Sanitize inputs — prevent prompt injection
+  const cityName = String(body.cityName ?? "").replace(/[\r\n\t]/g, " ").slice(0, 100).trim();
+  const country  = String(body.country  ?? "").replace(/[\r\n\t]/g, " ").slice(0, 80).trim();
+  const language = ["en","es","fr","de","pt","it","ja","zh","eo"].includes(body.language) ? body.language : "en";
   if (!cityName || !country) return NextResponse.json({ error: "cityName and country required" }, { status: 400 });
 
   // Check if already exists — return immediately

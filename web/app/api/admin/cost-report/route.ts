@@ -1,8 +1,9 @@
+import { isAdminAuthorised } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/db/supabase";
 
 function auth(req: NextRequest) {
-  return req.headers.get("x-admin-secret") === process.env.ADMIN_SECRET;
+  return isAdminAuthorised(req);
 }
 
 // All monetary values in USD

@@ -17,7 +17,11 @@ const CityPlanSchema = z.object({
 
 export type CityPlan = z.infer<typeof CityPlanSchema>;
 
-export async function planCity(cityName: string, country: string): Promise<CityPlan> {
+export async function planCity(cityNameRaw: string, countryRaw: string): Promise<CityPlan> {
+  // Sanitize inputs — strip newlines/control chars that could inject prompt instructions
+  const cityName = cityNameRaw.replace(/[\r\n\t]/g, " ").slice(0, 100).trim();
+  const country  = countryRaw.replace(/[\r\n\t]/g, " ").slice(0, 80).trim();
+
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const response = await client.messages.create({

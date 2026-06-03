@@ -1,9 +1,10 @@
+import { isAdminAuthorised } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/db/supabase";
 
 function auth(req: NextRequest) {
   const secret = req.headers.get("x-admin-secret");
-  return secret && secret === process.env.ADMIN_SECRET;
+  return secret && isAdminAuthorised(req);
 }
 
 export async function GET(req: NextRequest) {
