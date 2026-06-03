@@ -586,7 +586,7 @@ function AudioControls({ stop, stopIndex, totalStops, isPlaying, isGenerating, p
 
 // ─── Main player ──────────────────────────────────────────────────────────────
 
-export default function TourPlayer({ tour }: { tour: PlayerTour }) {
+export default function TourPlayer({ tour, initialLength = "medium" }: { tour: PlayerTour; initialLength?: "short" | "medium" | "full" }) {
   const tier = useTier();
   const locale = useLocale();
   const [stopIndex,      setStopIndex]      = useState(0);
@@ -596,7 +596,7 @@ export default function TourPlayer({ tour }: { tour: PlayerTour }) {
   const [sidebarOpen,    setSidebarOpen]    = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 640 : true
   );
-  const [contentLength,  setContentLength]  = useState<ContentLength>("medium");
+  const [contentLength,  setContentLength]  = useState<ContentLength>(initialLength);
   const [selectedDay,    setSelectedDay]    = useState(() => new Date().getDay());
   const [isDark,         setIsDark]         = useState(() => {
     if (typeof window === "undefined") return true;

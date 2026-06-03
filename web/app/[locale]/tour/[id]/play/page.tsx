@@ -31,8 +31,16 @@ export type PlayerTour = {
   stops: PlayerStop[];
 };
 
-export default async function PlayPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PlayPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ length?: string }>;
+}) {
   const { id } = await params;
+  const { length } = await searchParams;
+  const initialLength = (["short", "medium", "full"].includes(length ?? "") ? length : "medium") as "short" | "medium" | "full";
   const raw = await getTourById(id);
   if (!raw) notFound();
 
@@ -90,5 +98,5 @@ export default async function PlayPage({ params }: { params: Promise<{ id: strin
     stops: sortedStops,
   };
 
-  return <TourPlayer tour={tour} />;
+  return <TourPlayer tour={tour} initialLength={initialLength} />;
 }
