@@ -16,7 +16,7 @@ async function sendInviteEmail(email: string, actionLink: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "TourIt <noreply@tourit.es>",
+      from: process.env.RESEND_FROM_EMAIL ?? "TourIt <onboarding@resend.dev>",
       to: [email],
       subject: "You've been invited to TourIt Pro",
       html: `
