@@ -13,27 +13,26 @@ export async function POST(req: NextRequest) {
 
   const db = createAdminClient();
 
-  // Check if user exists in auth
   const { data: { users }, error: listErr } = await db.auth.admin.listUsers({ perPage: 1000 });
   if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
 
   const existingAuthUser = users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
 
   if (existingAuthUser) {
-    // User exists — upgrade tier directly
+    // Upgrade existing user — mark as comped (not a paying subscriber)
     const { error } = await db
       .from("users")
-      .update({ tier: "pro" })
+      .update({ tier: "pro", comped: true })
       .eq("id", existingAuthUser.id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ status: "upgraded", email });
   }
 
-  // New user — send Supabase invite with pro metadata
+  // New user — invite with comped flag in redirect URL
   const { error: inviteErr } = await db.auth.admin.inviteUserByEmail(email, {
-    data: { pending_tier: "pro" },
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?upgrade=pro`,
+    data: { pending_tier: "pro", comped: true },
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?upgrade=pro&comped=true`,
   });
 
   if (inviteErr) return NextResponse.json({ error: inviteErr.message }, { status: 500 });

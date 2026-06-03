@@ -17,8 +17,9 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data.user) {
       if (upgrade === "pro") {
+        const comped = searchParams.get("comped") === "true";
         const db = createAdminClient();
-        await db.from("users").upsert({ id: data.user.id, tier: "pro" }, { onConflict: "id" });
+        await db.from("users").upsert({ id: data.user.id, tier: "pro", comped }, { onConflict: "id" });
       }
       return NextResponse.redirect(`${origin}${next}`);
     }

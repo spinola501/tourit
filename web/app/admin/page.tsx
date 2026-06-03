@@ -701,10 +701,11 @@ function ToolsSection({ secret }: { secret: string }) {
 // ── Costs section ─────────────────────────────────────────────────────────────
 
 type CostReport = {
+  eur_to_usd: number;
   generation: { stops: number; cities: number; en_stops: number; non_en_content_pieces: number; en_generation_usd: number; translation_usd: number; total_usd: number; cost_per_stop_usd: number };
   infrastructure: { vercel_monthly_usd: number; supabase_monthly_usd: number; domain_monthly_usd: number; total_monthly_usd: number };
-  revenue: { pro_users: number; total_users: number; pro_conversion_pct: number; pro_monthly_recurring_eur: number; estimated_trip_passes: number; trip_pass_revenue_eur: number };
-  profitability: { monthly_revenue_eur: number; monthly_costs_usd: number; monthly_profit_eur: number; margin_pct: number | null; break_even_pro_users: number };
+  revenue: { total_users: number; total_pro_users: number; comped_users: number; paying_pro_users: number; pro_conversion_pct: number; pro_mrr_usd: number; estimated_trip_passes: number; trip_pass_revenue_usd: number; annual_pro_price_usd: number; trip_pass_price_usd: number };
+  profitability: { monthly_revenue_usd: number; monthly_costs_usd: number; monthly_profit_usd: number; margin_pct: number | null; break_even_pro_users: number };
 };
 
 function CostBar({ label, value, max, color = "bg-emerald-500" }: { label: string; value: number; max: number; color?: string }) {
@@ -748,76 +749,42 @@ function CostsSection({ secret }: { secret: string }) {
   if (!report) return <p className="text-white/30 text-sm">Failed to load cost report.</p>;
 
   const { generation: g, infrastructure: i, revenue: r, profitability: p } = report;
-  const profitable = p.monthly_profit_eur > 0;
+  const profitable = p.monthly_profit_usd > 0;
+  const $ = (n: number) => `$${n.toFixed(2)}`;
 
   return (
     <div className="space-y-8">
-      <SectionHeader title="Costs & Revenue" sub="Estimated breakdown based on current usage and user counts." />
+      <SectionHeader title="Costs & Revenue" sub={`All values in USD. EUR prices converted at $${report.eur_to_usd}/€.`} />
 
-      {/* ── Profitability summary ── */}
+      {/* ── Profitability snapshot ── */}
       <div className="rounded-xl border border-white/10 p-5 space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-1">Monthly Snapshot</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <CostCard label="MRR" value={`€${r.pro_monthly_recurring_eur.toFixed(2)}`} sub={`${r.pro_users} Pro users`} accent={r.pro_monthly_recurring_eur > 0} />
-          <CostCard label="Monthly costs" value={`$${p.monthly_costs_usd.toFixed(2)}`} sub="Infra + generation" />
-          <CostCard label="Monthly profit" value={`${profitable ? "+" : ""}€${p.monthly_profit_eur.toFixed(2)}`} sub={profitable ? "Profitable" : "Pre-revenue"} accent={profitable} />
-          <CostCard label="Margin" value={p.margin_pct !== null ? `${p.margin_pct}%` : "—"} sub={`Break-even @ ${p.break_even_pro_users} Pro users`} />
+          <CostCard label="MRR" value={$(r.pro_mrr_usd)} sub={`${r.paying_pro_users} paying Pro`} accent={r.pro_mrr_usd > 0} />
+          <CostCard label="Monthly costs" value={$(p.monthly_costs_usd)} sub="Infra + generation" />
+          <CostCard label="Monthly profit" value={`${profitable ? "+" : ""}${$(p.monthly_profit_usd)}`} sub={profitable ? "Profitable" : "Pre-revenue"} accent={profitable} />
+          <CostCard label="Margin" value={p.margin_pct !== null ? `${p.margin_pct}%` : "—"} sub={`Break-even @ ${p.break_even_pro_users} paying users`} />
         </div>
         <div className="space-y-3 pt-2">
-          <CostBar label="Pro conversion" value={r.pro_conversion_pct} max={100} color="bg-yellow-400" />
+          <CostBar label={`Pro conversion (${r.paying_pro_users} paying / ${r.total_users} total)`} value={r.pro_conversion_pct} max={100} color="bg-yellow-400" />
           {p.margin_pct !== null && <CostBar label="Profit margin" value={p.margin_pct} max={100} color={profitable ? "bg-emerald-500" : "bg-red-500"} />}
         </div>
-      </div>
-
-      {/* ── Generation costs ── */}
-      <div className="rounded-xl border border-white/10 p-5">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">AI Generation Costs (All Time)</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-          <CostCard label="Stops generated" value={g.stops.toLocaleString()} sub={`${g.cities} cities`} />
-          <CostCard label="EN generation" value={`$${g.en_generation_usd.toFixed(2)}`} sub="Claude Haiku + Tavily" />
-          <CostCard label="Translations" value={`$${g.translation_usd.toFixed(2)}`} sub={`${g.non_en_content_pieces} non-EN content pieces`} />
-        </div>
-        <div className="rounded-lg bg-white/3 border border-white/8 p-4">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs text-white/50">
-            <div className="flex justify-between"><span>Cost per stop (EN)</span><span className="font-mono text-white/70">${g.cost_per_stop_usd.toFixed(4)}</span></div>
-            <div className="flex justify-between"><span>Claude Haiku input</span><span className="font-mono text-white/70">$0.25/M tokens</span></div>
-            <div className="flex justify-between"><span>Tavily search</span><span className="font-mono text-white/70">$0.01/call</span></div>
-            <div className="flex justify-between"><span>Claude Haiku output</span><span className="font-mono text-white/70">$1.25/M tokens</span></div>
-            <div className="flex justify-between font-semibold text-white/70 pt-1 border-t border-white/10"><span>Total generation</span><span className="font-mono">${g.total_usd.toFixed(2)}</span></div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Infrastructure ── */}
-      <div className="rounded-xl border border-white/10 p-5">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Infrastructure (Monthly)</h3>
-        <div className="space-y-2 text-sm">
-          {[
-            ["Vercel Pro", `$${i.vercel_monthly_usd}/mo`],
-            ["Supabase", i.supabase_monthly_usd === 0 ? "Free" : `$${i.supabase_monthly_usd}/mo`],
-            ["Domain (tourit.es)", `$${i.domain_monthly_usd.toFixed(2)}/mo`],
-          ].map(([label, val]) => (
-            <div key={label} className="flex justify-between py-2 border-b border-white/5 last:border-0">
-              <span className="text-white/60">{label}</span>
-              <span className="font-mono text-white/80">{val}</span>
-            </div>
-          ))}
-          <div className="flex justify-between pt-2 font-semibold text-white">
-            <span>Total infrastructure</span>
-            <span className="font-mono">${i.total_monthly_usd.toFixed(2)}/mo</span>
-          </div>
-        </div>
+        {r.comped_users > 0 && (
+          <p className="text-xs text-white/30 pt-1">
+            {r.comped_users} invited/comped Pro user{r.comped_users !== 1 ? "s" : ""} excluded from revenue ({r.total_pro_users} total Pro, {r.paying_pro_users} paying).
+          </p>
+        )}
       </div>
 
       {/* ── Revenue breakdown ── */}
       <div className="rounded-xl border border-white/10 p-5">
         <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Revenue Breakdown</h3>
-        <div className="space-y-2 text-sm">
+        <div className="space-y-0 text-sm">
           {[
-            ["Annual Pro (€16.99/yr)", `€${r.pro_monthly_recurring_eur.toFixed(2)}/mo`, `${r.pro_users} users × €1.42/mo`],
-            ["Trip Passes (€5.99)", `€${r.trip_pass_revenue_eur.toFixed(2)} est.`, `~${r.estimated_trip_passes} passes`],
+            [`Annual Pro (${$(r.annual_pro_price_usd)}/yr)`, `${$(r.pro_mrr_usd)}/mo`, `${r.paying_pro_users} paying users × ${$(r.annual_pro_price_usd / 12)}/mo`],
+            [`Trip Passes (${$(r.trip_pass_price_usd)})`, `${$(r.trip_pass_revenue_usd)} est.`, `~${r.estimated_trip_passes} passes (10% of paying Pro est.)`],
           ].map(([label, val, sub]) => (
-            <div key={label} className="flex items-baseline justify-between py-2 border-b border-white/5 last:border-0">
+            <div key={label} className="flex items-baseline justify-between py-3 border-b border-white/5 last:border-0">
               <div>
                 <p className="text-white/70">{label}</p>
                 <p className="text-xs text-white/30">{sub}</p>
@@ -825,15 +792,55 @@ function CostsSection({ secret }: { secret: string }) {
               <span className="font-mono text-white/80 ml-4 flex-shrink-0">{val}</span>
             </div>
           ))}
-          <div className="flex justify-between pt-2 font-semibold text-emerald-400">
+          <div className="flex justify-between pt-3 font-semibold text-emerald-400">
             <span>Total MRR</span>
-            <span className="font-mono">€{r.pro_monthly_recurring_eur.toFixed(2)}/mo</span>
+            <span className="font-mono">{$(r.pro_mrr_usd)}/mo</span>
           </div>
         </div>
         <p className="text-[10px] text-white/20 mt-4">
-          Revenue in EUR. Costs in USD. Stripe not yet connected — counts based on DB tier field.
-          Trip pass revenue is estimated (10% of Pro users assumed to have started with a trip pass).
+          Stripe not yet connected — revenue estimated from DB tier. Trip passes estimated at 10% of paying Pro count.
+          Run <code className="text-white/30">ALTER TABLE public.users ADD COLUMN IF NOT EXISTS comped boolean DEFAULT false;</code> in Supabase SQL editor to enable comped tracking.
         </p>
+      </div>
+
+      {/* ── Generation costs ── */}
+      <div className="rounded-xl border border-white/10 p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">AI Generation Costs (All Time)</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <CostCard label="Stops generated" value={g.stops.toLocaleString()} sub={`across ${g.cities} cities`} />
+          <CostCard label="EN generation" value={$(g.en_generation_usd)} sub="Claude Haiku + Tavily" />
+          <CostCard label="Translations" value={$(g.translation_usd)} sub={`${g.non_en_content_pieces} non-EN pieces`} />
+        </div>
+        <div className="rounded-lg bg-white/3 border border-white/[0.08] p-4">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs text-white/50">
+            <div className="flex justify-between"><span>Cost per stop (EN)</span><span className="font-mono text-white/70">${g.cost_per_stop_usd.toFixed(4)}</span></div>
+            <div className="flex justify-between"><span>Claude Haiku input</span><span className="font-mono text-white/70">$0.25/M tokens</span></div>
+            <div className="flex justify-between"><span>Tavily search</span><span className="font-mono text-white/70">$0.01/call</span></div>
+            <div className="flex justify-between"><span>Claude Haiku output</span><span className="font-mono text-white/70">$1.25/M tokens</span></div>
+            <div className="flex justify-between font-semibold text-white/70 pt-1 border-t border-white/10 col-span-2"><span>Total generation cost</span><span className="font-mono">{$(g.total_usd)}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Infrastructure ── */}
+      <div className="rounded-xl border border-white/10 p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Infrastructure (Monthly)</h3>
+        <div className="space-y-0 text-sm">
+          {[
+            ["Vercel Pro",         `$${i.vercel_monthly_usd}/mo`],
+            ["Supabase",           i.supabase_monthly_usd === 0 ? "Free" : `$${i.supabase_monthly_usd}/mo`],
+            ["Domain (tourit.es)", `$${i.domain_monthly_usd.toFixed(2)}/mo`],
+          ].map(([label, val]) => (
+            <div key={label} className="flex justify-between py-2.5 border-b border-white/5 last:border-0">
+              <span className="text-white/60">{label}</span>
+              <span className="font-mono text-white/80">{val}</span>
+            </div>
+          ))}
+          <div className="flex justify-between pt-3 font-semibold text-white">
+            <span>Total infrastructure</span>
+            <span className="font-mono">{$(i.total_monthly_usd)}/mo</span>
+          </div>
+        </div>
       </div>
     </div>
   );
