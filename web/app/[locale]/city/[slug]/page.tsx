@@ -23,8 +23,8 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
   const photoUrl = (dbCity as unknown as { photo_url?: string }).photo_url ?? null;
 
   const [dbTours, dbStops] = await Promise.all([
-    getToursByCity(dbCity.id),
-    getStopsByCity(dbCity.id),
+    getToursByCity(dbCity.id).catch(() => []),
+    getStopsByCity(dbCity.id).catch(() => []),
   ]);
 
   // Tier check

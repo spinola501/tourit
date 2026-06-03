@@ -7,7 +7,7 @@ import { getCookieTier, setCookieTier } from "@/lib/hooks/useTier";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Section = "overview" | "users" | "content" | "reports" | "tools";
+type Section = "overview" | "users" | "content" | "reports" | "tools" | "costs";
 
 type Stats = {
   cities: number; tours: number; stops: number; content: number;
@@ -698,6 +698,147 @@ function ToolsSection({ secret }: { secret: string }) {
   );
 }
 
+// ── Costs section ─────────────────────────────────────────────────────────────
+
+type CostReport = {
+  generation: { stops: number; cities: number; en_stops: number; non_en_content_pieces: number; en_generation_usd: number; translation_usd: number; total_usd: number; cost_per_stop_usd: number };
+  infrastructure: { vercel_monthly_usd: number; supabase_monthly_usd: number; domain_monthly_usd: number; total_monthly_usd: number };
+  revenue: { pro_users: number; total_users: number; pro_conversion_pct: number; pro_monthly_recurring_eur: number; estimated_trip_passes: number; trip_pass_revenue_eur: number };
+  profitability: { monthly_revenue_eur: number; monthly_costs_usd: number; monthly_profit_eur: number; margin_pct: number | null; break_even_pro_users: number };
+};
+
+function CostBar({ label, value, max, color = "bg-emerald-500" }: { label: string; value: number; max: number; color?: string }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div>
+      <div className="flex justify-between text-xs text-white/50 mb-1.5">
+        <span>{label}</span>
+        <span className="text-white/70 font-mono">{pct}%</span>
+      </div>
+      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function CostCard({ label, value, sub, accent = false }: { label: string; value: string; sub?: string; accent?: boolean }) {
+  return (
+    <div className={`rounded-xl border p-4 ${accent ? "border-emerald-500/30 bg-emerald-500/5" : "border-white/10 bg-white/3"}`}>
+      <p className="text-xs text-white/40 uppercase tracking-widest mb-1">{label}</p>
+      <p className={`text-2xl font-bold ${accent ? "text-emerald-400" : "text-white"}`}>{value}</p>
+      {sub && <p className="text-xs text-white/30 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function CostsSection({ secret }: { secret: string }) {
+  const [report, setReport] = useState<CostReport | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/admin/cost-report", { headers: { "x-admin-secret": secret } })
+      .then((r) => r.json())
+      .then((d) => { setReport(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [secret]);
+
+  if (loading) return <Loading />;
+  if (!report) return <p className="text-white/30 text-sm">Failed to load cost report.</p>;
+
+  const { generation: g, infrastructure: i, revenue: r, profitability: p } = report;
+  const profitable = p.monthly_profit_eur > 0;
+
+  return (
+    <div className="space-y-8">
+      <SectionHeader title="Costs & Revenue" sub="Estimated breakdown based on current usage and user counts." />
+
+      {/* ── Profitability summary ── */}
+      <div className="rounded-xl border border-white/10 p-5 space-y-4">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-1">Monthly Snapshot</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <CostCard label="MRR" value={`€${r.pro_monthly_recurring_eur.toFixed(2)}`} sub={`${r.pro_users} Pro users`} accent={r.pro_monthly_recurring_eur > 0} />
+          <CostCard label="Monthly costs" value={`$${p.monthly_costs_usd.toFixed(2)}`} sub="Infra + generation" />
+          <CostCard label="Monthly profit" value={`${profitable ? "+" : ""}€${p.monthly_profit_eur.toFixed(2)}`} sub={profitable ? "Profitable" : "Pre-revenue"} accent={profitable} />
+          <CostCard label="Margin" value={p.margin_pct !== null ? `${p.margin_pct}%` : "—"} sub={`Break-even @ ${p.break_even_pro_users} Pro users`} />
+        </div>
+        <div className="space-y-3 pt-2">
+          <CostBar label="Pro conversion" value={r.pro_conversion_pct} max={100} color="bg-yellow-400" />
+          {p.margin_pct !== null && <CostBar label="Profit margin" value={p.margin_pct} max={100} color={profitable ? "bg-emerald-500" : "bg-red-500"} />}
+        </div>
+      </div>
+
+      {/* ── Generation costs ── */}
+      <div className="rounded-xl border border-white/10 p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">AI Generation Costs (All Time)</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <CostCard label="Stops generated" value={g.stops.toLocaleString()} sub={`${g.cities} cities`} />
+          <CostCard label="EN generation" value={`$${g.en_generation_usd.toFixed(2)}`} sub="Claude Haiku + Tavily" />
+          <CostCard label="Translations" value={`$${g.translation_usd.toFixed(2)}`} sub={`${g.non_en_content_pieces} non-EN content pieces`} />
+        </div>
+        <div className="rounded-lg bg-white/3 border border-white/8 p-4">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs text-white/50">
+            <div className="flex justify-between"><span>Cost per stop (EN)</span><span className="font-mono text-white/70">${g.cost_per_stop_usd.toFixed(4)}</span></div>
+            <div className="flex justify-between"><span>Claude Haiku input</span><span className="font-mono text-white/70">$0.25/M tokens</span></div>
+            <div className="flex justify-between"><span>Tavily search</span><span className="font-mono text-white/70">$0.01/call</span></div>
+            <div className="flex justify-between"><span>Claude Haiku output</span><span className="font-mono text-white/70">$1.25/M tokens</span></div>
+            <div className="flex justify-between font-semibold text-white/70 pt-1 border-t border-white/10"><span>Total generation</span><span className="font-mono">${g.total_usd.toFixed(2)}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Infrastructure ── */}
+      <div className="rounded-xl border border-white/10 p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Infrastructure (Monthly)</h3>
+        <div className="space-y-2 text-sm">
+          {[
+            ["Vercel Pro", `$${i.vercel_monthly_usd}/mo`],
+            ["Supabase", i.supabase_monthly_usd === 0 ? "Free" : `$${i.supabase_monthly_usd}/mo`],
+            ["Domain (tourit.es)", `$${i.domain_monthly_usd.toFixed(2)}/mo`],
+          ].map(([label, val]) => (
+            <div key={label} className="flex justify-between py-2 border-b border-white/5 last:border-0">
+              <span className="text-white/60">{label}</span>
+              <span className="font-mono text-white/80">{val}</span>
+            </div>
+          ))}
+          <div className="flex justify-between pt-2 font-semibold text-white">
+            <span>Total infrastructure</span>
+            <span className="font-mono">${i.total_monthly_usd.toFixed(2)}/mo</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Revenue breakdown ── */}
+      <div className="rounded-xl border border-white/10 p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Revenue Breakdown</h3>
+        <div className="space-y-2 text-sm">
+          {[
+            ["Annual Pro (€16.99/yr)", `€${r.pro_monthly_recurring_eur.toFixed(2)}/mo`, `${r.pro_users} users × €1.42/mo`],
+            ["Trip Passes (€5.99)", `€${r.trip_pass_revenue_eur.toFixed(2)} est.`, `~${r.estimated_trip_passes} passes`],
+          ].map(([label, val, sub]) => (
+            <div key={label} className="flex items-baseline justify-between py-2 border-b border-white/5 last:border-0">
+              <div>
+                <p className="text-white/70">{label}</p>
+                <p className="text-xs text-white/30">{sub}</p>
+              </div>
+              <span className="font-mono text-white/80 ml-4 flex-shrink-0">{val}</span>
+            </div>
+          ))}
+          <div className="flex justify-between pt-2 font-semibold text-emerald-400">
+            <span>Total MRR</span>
+            <span className="font-mono">€{r.pro_monthly_recurring_eur.toFixed(2)}/mo</span>
+          </div>
+        </div>
+        <p className="text-[10px] text-white/20 mt-4">
+          Revenue in EUR. Costs in USD. Stripe not yet connected — counts based on DB tier field.
+          Trip pass revenue is estimated (10% of Pro users assumed to have started with a trip pass).
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Nav item ──────────────────────────────────────────────────────────────────
 
 const NAV: { id: Section; label: string; icon: string }[] = [
@@ -705,6 +846,7 @@ const NAV: { id: Section; label: string; icon: string }[] = [
   { id: "users",     label: "Users",     icon: "◎" },
   { id: "content",   label: "Content",   icon: "▦" },
   { id: "reports",   label: "Reports",   icon: "⚑" },
+  { id: "costs",     label: "Costs",     icon: "$" },
   { id: "tools",     label: "Tools",     icon: "⚙" },
 ];
 
@@ -790,6 +932,7 @@ export default function AdminPage() {
           {section === "users"    && <UsersSection    secret={secret} />}
           {section === "content"  && <ContentSection  secret={secret} />}
           {section === "reports"  && <ReportsSection  secret={secret} />}
+          {section === "costs"    && <CostsSection    secret={secret} />}
           {section === "tools"    && <ToolsSection    secret={secret} />}
         </main>
       </div>

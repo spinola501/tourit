@@ -206,10 +206,31 @@ export function CityPageClient({
   return (
     <div className="space-y-16">
 
+      {/* ── Generation in progress banner ── */}
+      {tours.length === 0 && stops.length === 0 && (
+        <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse flex-shrink-0" />
+            <p className="font-semibold text-white">Tour generation in progress</p>
+          </div>
+          <p className="text-sm text-white/50 mb-4">
+            We&apos;re generating audio tours for this destination right now. This usually takes 3–5 minutes.
+            You&apos;ll receive an email when it&apos;s ready — feel free to close this tab.
+          </p>
+          <div className="flex gap-4 text-xs text-white/30">
+            <span>• AI stop research</span>
+            <span>• Narration generation</span>
+            <span>• Tour route design</span>
+          </div>
+        </div>
+      )}
+
       {/* ── Narration preference ── */}
+      {(tours.length > 0 || stops.length > 0) && (
       <section>
         <NarrationPicker value={length} onChange={setLength} />
       </section>
+      )}
 
       {/* ── Pre-made tours ── */}
       <section>
