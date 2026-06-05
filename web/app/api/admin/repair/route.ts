@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
           title: `${city.name} Classic`,
           tagline: `The essential ${city.name} experience — iconic landmarks, hidden history, unforgettable stories.`,
           type: "prebuilt",
-          tier_required: "free",
+          tier: "free",
           cover_color: "#1a3a5c",
           is_official: true,
         })

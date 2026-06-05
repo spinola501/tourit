@@ -15,7 +15,7 @@ export async function getToursByCity(cityId: string) {
   const { data } = await db
     .from("tours")
     .select(`
-      id, title, tagline, type, tier_required, cover_color, is_official,
+      id, title, tagline, theme, duration_hours, tier, cover_color,
       tour_stops(count)
     `)
     .eq("city_id", cityId)
@@ -28,8 +28,8 @@ export async function getTourById(tourId: string) {
   const { data } = await db
     .from("tours")
     .select(`
-      id, title, tagline, type, tier_required, cover_color, is_official,
-      cities(slug, name, country, emoji, cover_color),
+      id, title, tagline, theme, tier, cover_color,
+      cities(slug, name, country, cover_color),
       tour_stops(
         order_index,
         stops(

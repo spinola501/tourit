@@ -44,7 +44,7 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
 
   const city = tour.cities as unknown as { slug: string; name: string; country: string; emoji: string; cover_color: string } | null;
   const coverColor = tour.cover_color ?? "#1a3a5c";
-  const tier = tour.tier_required as "free" | "pro";
+  const tier = (tour as unknown as { tier?: string }).tier as "free" | "pro" ?? "free";
 
   // Sort stops by order_index
   const sortedTourStops = ((tour.tour_stops ?? []) as unknown as {

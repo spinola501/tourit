@@ -13,7 +13,7 @@ export type ClientTour = {
   theme: string | null;
   duration_hours: number | null;
   cover_color: string | null;
-  tier_required: string | null;
+  tier: string | null;
   stop_count: number;
 };
 
@@ -79,7 +79,7 @@ function TourCard({ tour, length, coverColor, userTier, locale }: {
   locale: string;
 }) {
   const color = tour.cover_color ?? coverColor;
-  const isProTour = tour.tier_required === "pro";
+  const isProTour = tour.tier === "pro";
   const locked = isProTour && userTier === "free";
   const hours = tour.duration_hours ?? 0;
 

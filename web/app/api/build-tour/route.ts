@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   const { cityId, stopIds, theme, narration, language, coverColor, title, tagline } = await req.json();
   if (!cityId || !stopIds?.length) return NextResponse.json({ error: "cityId and stopIds required" }, { status: 400 });
 
+  // Insert tour — only columns that actually exist in the schema
   const { data: tour, error } = await db.from("tours").insert({
     city_id: cityId,
     title: title ?? "Custom Tour",
@@ -20,8 +21,6 @@ export async function POST(req: NextRequest) {
     theme: theme ?? "standard",
     cover_color: coverColor ?? "#1a3a5c",
     tier: "pro",
-    tier_required: "pro",
-    created_by: user.id,
   }).select("id").single();
 
   if (error || !tour) return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
@@ -30,7 +29,6 @@ export async function POST(req: NextRequest) {
     (stopIds as string[]).map((stopId: string, idx: number) => ({
       tour_id: tour.id,
       stop_id: stopId,
-      position: idx,
       order_index: idx,
     }))
   );
