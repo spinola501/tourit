@@ -141,6 +141,9 @@ Before starting Phase 4, confirm these are done:
 - [x] Admin cost & revenue tracker — AI generation costs, infrastructure, USD MRR, profitability %, break-even
 - [x] Narration length (Short/Standard/Long) selectable at city page level, passed to player via URL param
 - [x] Security hardening — timing-safe admin auth, open redirect fix, prompt injection prevention, report rate limiting
+- [x] Full app audit — 31 issues identified across links, auth, schema, UX, performance; all critical/high fixed
+- [x] NavBar locale-aware links — all hrefs use getLocale(), no more hardcoded /en
+- [x] Tier cookie DB sync — useTier hook syncs with Supabase on mount for immediate Pro recognition
 
 ---
 

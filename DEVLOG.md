@@ -2,6 +2,38 @@
 
 ---
 
+## Session 012 — 2026-06-05: Full app audit and link/auth/UX fixes
+
+**Done:**
+- **NavBar locale fix:** All links (`/`, `/discover`, `/profile`, `/auth/login`) now use `getLocale()` from next-intl/server and route to `/{locale}/...` — previously all were hardcoded without locale prefix causing 404s for non-English users
+- **TourPlayer upgrade link:** "Upgrade to Pro" button inside NarrationPanel was linking to `/account` — fixed to `/{locale}/account` using `useLocale()` inside the component
+- **404 page home link:** Was hardcoded to `/en` — changed to `/` so middleware handles locale routing correctly
+- **Tier cookie DB sync:** `useTier` hook now fetches DB tier on mount and syncs cookie — users upgraded via admin invite now see Pro status immediately without needing to visit `/profile`
+- **Email validation:** Added regex check in invite route before calling Resend/generateLink — prevents silent failures from malformed addresses
+- **ReportButton:** Added `disabled` state during submit (prevents duplicate reports), error catch on fetch, and `aria-label` for accessibility
+- **Admin avatar typo:** Fixed `(u.name || "?"[0])?.charAt(0)` → `(u.name?.[0] ?? "?").toUpperCase()` — was always showing "?" for nameless users
+- **Generation in-progress banner:** Added "Refresh" button so users can poll whether generation completed instead of guessing
+- **City hero image:** Changed to `loading="eager"` (above-the-fold image should not be lazy-loaded)
+- **Comprehensive audit:** Spawned deep audit agent covering all pages, API routes, auth flows, DB schema consistency, security, UX, performance, i18n — 31 issues identified, critical/high fixed
+
+**Decisions:**
+- `useTier` DB sync on mount: one extra Supabase query per page load where the hook is used (player, city page). Accepted cost given the UX benefit of instant Pro recognition after admin invite
+- LanguageSwitcher debounce, NavBar N+1 query, favorites race condition: left as-is — each requires a larger structural change (context provider, Redis, DB constraint) not justified at current scale
+
+**Problems / Blockers:**
+- `/_global-error` Turbopack prerender bug (Next.js 16) still present locally — Vercel builds pass, does not affect production
+- `comped` column SQL still needs running in Supabase: `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS comped boolean DEFAULT false;`
+- `tourit.es` not yet verified in Resend — invites and generation emails sent from `onboarding@resend.dev`
+
+**Next session:**
+- Verify `tourit.es` domain in Resend (add DNS to IONOS), set `RESEND_FROM_EMAIL` in Vercel
+- Run stop + city photo backfill from admin panel
+- End-to-end test: request Melbourne → confirm 12–16 stops → email received
+- Seed Tier 1 cities: Paris, Rome, NYC, Tokyo, Barcelona
+- Begin Stripe integration (Trip Pass €5.99/7d + Annual Pro €16.99/yr)
+
+---
+
 ## Session 011 — 2026-06-05: Pro features, security audit, and generation overhaul
 
 **Done:**
