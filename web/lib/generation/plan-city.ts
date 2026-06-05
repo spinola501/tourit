@@ -8,11 +8,13 @@ const PlannedStopSchema = z.object({
 });
 
 const CityPlanSchema = z.object({
-  cityName:   z.string(),
-  country:    z.string(),
-  slug:       z.string(),
-  coverColor: z.string(),
-  stops:      z.array(PlannedStopSchema).min(12).max(20),
+  cityName:       z.string(),
+  country:        z.string(),
+  slug:           z.string(),
+  coverColor:     z.string(),
+  locationType:   z.enum(["major_city", "city", "town", "park_reserve", "island", "region"]),
+  expectedStops:  z.number().int().min(4).max(20),
+  stops:          z.array(PlannedStopSchema).min(4).max(20),
 });
 
 export type CityPlan = z.infer<typeof CityPlanSchema>;
@@ -25,35 +27,40 @@ export async function planCity(cityNameRaw: string, countryRaw: string): Promise
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-6",   // Sonnet for better geographic coverage
+    model: "claude-sonnet-4-6",
     max_tokens: 2048,
     messages: [{
       role: "user",
-      content: `You are an expert travel curator with deep knowledge of every destination worldwide.
+      content: `You are an expert travel curator. Create an audio tour plan for: **${cityName}, ${country}**
 
-Create a city profile for: **${cityName}, ${country}**
+First, assess what kind of destination this is, then choose the RIGHT number of stops based on that assessment:
 
-Return ONLY a valid JSON object with this exact structure — no markdown, no explanation:
+- **Major world city** (London, Paris, Tokyo, Sydney, NYC): 15–20 stops
+- **Regional city / capital** (Melbourne, Barcelona, Edinburgh, Cape Town): 12–16 stops
+- **Small city / town** (Bruges, Queenstown, Dubrovnik): 8–12 stops
+- **National park / nature reserve** (Royal National Park, Yosemite, Dolomites): 5–10 stops
+- **Small island / village**: 4–8 stops
+
+CRITICAL RULES:
+- Only include stops that GENUINELY EXIST and are well-known tourist attractions
+- NEVER invent or hallucinate stops just to reach a higher number
+- For nature areas, only include named landmarks (waterfalls, lookouts, beaches, visitor centres)
+- For cities, spread stops geographically — don't cluster everything in the CBD
+- Use precise GPS coordinates (6 decimal places)
+
+Return ONLY this JSON (no markdown, no explanation):
 {
-  "cityName": "official city name",
+  "cityName": "official name",
   "country": "country name",
-  "slug": "city-name-lowercase-hyphens-only",
-  "coverColor": "#hexcolor (dark, atmospheric — e.g. deep blue for Sydney, terracotta for Rome)",
+  "slug": "lowercase-hyphens-only",
+  "coverColor": "#hexcolor (dark atmospheric colour for this destination)",
+  "locationType": "major_city|city|town|park_reserve|island|region",
+  "expectedStops": <number you chose>,
   "stops": [
-    {"name": "Exact Stop Name", "lat": -37.8136, "lng": 144.9631},
+    {"name": "Exact Real Place Name", "lat": 0.000000, "lng": 0.000000},
     ...
   ]
-}
-
-REQUIREMENTS:
-- Include EXACTLY 15 stops — no fewer, no more
-- Choose the 15 most iconic, tourist-worthy attractions: major landmarks, world-famous museums, scenic parks, historic sites, popular beaches or markets
-- Use precise GPS coordinates (6 decimal places) for each stop
-- For large cities like Melbourne, Sydney, London — include well-spread geographic coverage across the city, not just the CBD
-- Slug must be lowercase with hyphens only (no spaces, no special chars)
-- Cover color should feel like the city's atmosphere
-
-Return only the JSON object.`,
+}`,
     }],
   });
 
@@ -64,11 +71,17 @@ Return only the JSON object.`,
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    // Try to extract JSON object from response if wrapped in text
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (!match) throw new Error(`planCity: no JSON in response for ${cityName}`);
     parsed = JSON.parse(match[0]);
   }
 
-  return CityPlanSchema.parse(parsed);
+  const plan = CityPlanSchema.parse(parsed);
+
+  // Sanity check: if stop count is way off from expectedStops, log a warning
+  if (Math.abs(plan.stops.length - plan.expectedStops) > 3) {
+    console.warn(`[plan-city] ${cityName}: expected ${plan.expectedStops} stops, got ${plan.stops.length}`);
+  }
+
+  return plan;
 }

@@ -8,8 +8,7 @@ import { fetchWikipediaPhoto } from "@/lib/photos/wikipedia";
 // Maximise Vercel function lifetime for background generation
 export const maxDuration = 300;
 
-const MIN_STOPS_FOR_COMPLETE = 10; // treat city as incomplete below this
-const GENERATION_BATCH_SIZE  = 5;  // parallel stop generation
+const GENERATION_BATCH_SIZE = 5; // parallel stop generation
 
 async function sendEmail(to: string, subject: string, html: string) {
   const key = process.env.RESEND_API_KEY;
@@ -109,7 +108,7 @@ async function runGeneration(
     planCityName = plan.cityName;
     planCountry = plan.country;
     planCoverColor = plan.coverColor;
-    console.log(`[generate-city] plan ready: ${plan.stops.length} stops planned`);
+    console.log(`[generate-city] plan ready: ${plan.stops.length} stops planned (${plan.locationType}, expected ${plan.expectedStops})`);
 
     const slug = plan.slug || cityName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
@@ -237,14 +236,21 @@ export async function POST(req: NextRequest) {
   const language = ["en","es","fr","de","pt","it","ja","zh","eo"].includes(body.language) ? body.language : "en";
   if (!cityName || !country) return NextResponse.json({ error: "cityName and country required" }, { status: 400 });
 
-  // Check if city already exists AND is fully generated
+  // Check if city already exists AND is fully generated.
+  // A city is "done" when it has stops AND tours — tours are only created at the
+  // end of generation, so their presence means the full pipeline completed.
+  // This handles small locations (parks with 6 stops) and large cities equally.
   const { data: existing } = await db.from("cities").select("id, slug").ilike("name", cityName).maybeSingle();
   if (existing) {
-    const { count } = await db.from("stops").select("*", { count: "exact", head: true }).eq("city_id", existing.id);
-    if ((count ?? 0) >= MIN_STOPS_FOR_COMPLETE) {
+    const [{ count: stopCount }, { count: tourCount }] = await Promise.all([
+      db.from("stops").select("*", { count: "exact", head: true }).eq("city_id", existing.id),
+      db.from("tours").select("*", { count: "exact", head: true }).eq("city_id", existing.id),
+    ]);
+    if ((stopCount ?? 0) > 0 && (tourCount ?? 0) > 0) {
+      // Fully generated — return immediately
       return NextResponse.json({ status: "exists", citySlug: existing.slug });
     }
-    // City exists but is incomplete — fall through to regenerate missing stops
+    // Has stops but no tours (incomplete run), or neither — regenerate
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tourit.es";
