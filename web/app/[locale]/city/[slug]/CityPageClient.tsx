@@ -214,13 +214,21 @@ export function CityPageClient({
             <p className="font-semibold text-white">Tour generation in progress</p>
           </div>
           <p className="text-sm text-white/50 mb-4">
-            We&apos;re generating audio tours for this destination right now. This usually takes 3–5 minutes.
-            You&apos;ll receive an email when it&apos;s ready — feel free to close this tab.
+            We&apos;re generating audio tours for this destination. This usually takes 3–5 minutes.
+            You&apos;ll receive an email when it&apos;s ready.
           </p>
-          <div className="flex gap-4 text-xs text-white/30">
-            <span>• AI stop research</span>
-            <span>• Narration generation</span>
-            <span>• Tour route design</span>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-4 text-xs text-white/30">
+              <span>• AI stop research</span>
+              <span>• Narration generation</span>
+              <span>• Tour route design</span>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-xs text-yellow-400/70 hover:text-yellow-400 border border-yellow-400/20 hover:border-yellow-400/40 px-3 py-1.5 rounded-full transition-colors flex-shrink-0 ml-4"
+            >
+              Refresh
+            </button>
           </div>
         </div>
       )}

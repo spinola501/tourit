@@ -74,6 +74,7 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
           <img
             src={photoUrl}
             alt={dbCity.name}
+            loading="eager"
             className="absolute inset-0 w-full h-full object-cover opacity-20"
           />
         )}

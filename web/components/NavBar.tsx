@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/db/supabase";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 export async function NavBar() {
-  const [supabase, t] = await Promise.all([
+  const [supabase, t, locale] = await Promise.all([
     createServerSupabaseClient(),
     getTranslations("nav"),
+    getLocale(),
   ]);
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -26,11 +27,13 @@ export async function NavBar() {
     displayName = profile?.name ?? user.user_metadata?.full_name ?? user.email ?? "";
   }
 
+  const initial = displayName[0]?.toUpperCase() ?? "?";
+
   return (
     <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-      <Link href="/" className="font-bold text-lg tracking-tight">TourIt</Link>
+      <Link href={`/${locale}`} className="font-bold text-lg tracking-tight">TourIt</Link>
       <div className="flex items-center gap-3 text-sm text-white/60">
-        <Link href="/discover" className="hover:text-white transition-colors">{t("discover")}</Link>
+        <Link href={`/${locale}/discover`} className="hover:text-white transition-colors">{t("discover")}</Link>
 
         <LanguageSwitcher />
 
@@ -39,13 +42,13 @@ export async function NavBar() {
             {tier === "pro" && (
               <span className="text-xs text-yellow-400 font-semibold">★ Pro</span>
             )}
-            <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Link href={`/${locale}/profile`} className="flex items-center gap-2 hover:opacity-80 transition-opacity" aria-label={`Profile: ${displayName}`}>
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatarUrl} alt={displayName} className="w-7 h-7 rounded-full object-cover" />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
-                  {displayName[0]?.toUpperCase() ?? "?"}
+                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white" aria-hidden="true">
+                  {initial}
                 </div>
               )}
               <span className="text-white/70 hidden sm:block">{displayName.split(" ")[0]}</span>
@@ -53,7 +56,7 @@ export async function NavBar() {
           </div>
         ) : (
           <Link
-            href="/auth/login"
+            href={`/${locale}/auth/login`}
             className="bg-white text-black px-4 py-1.5 rounded-full font-medium hover:bg-white/90 transition-colors"
           >
             {t("signIn")}

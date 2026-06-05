@@ -210,7 +210,7 @@ function UsersSection({ secret }: { secret: string }) {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                        {(u.name || "?"[0])?.charAt(0).toUpperCase()}
+                        {(u.name?.[0] ?? "?").toUpperCase()}
                       </div>
                       <div>
                         <p className="font-medium text-white">{u.name || <span className="text-white/30 italic">no name</span>}</p>

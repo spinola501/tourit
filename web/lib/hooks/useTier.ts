@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createBrowserClient } from "@/lib/db/supabase";
 
 export type Tier = "free" | "pro";
 
@@ -20,13 +21,27 @@ export function useTier(): Tier {
   const [tier, setTier] = useState<Tier>("free");
 
   useEffect(() => {
+    // Start with cookie for instant render
     setTier(getCookieTier());
+
+    // Sync with DB on mount — catches tier changes made server-side (e.g. admin invite)
+    const supabase = createBrowserClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("users").select("tier").eq("id", user.id).single()
+        .then(({ data }) => {
+          if (data?.tier && data.tier !== getCookieTier()) {
+            setCookieTier(data.tier as Tier);
+            setTier(data.tier as Tier);
+          }
+        });
+    });
 
     // Same-tab: custom event fired by setCookieTier
     const onCustom = (e: Event) => setTier((e as CustomEvent<Tier>).detail);
     window.addEventListener("tourit_tier_changed", onCustom);
 
-    // Cross-tab: poll cookie on visibility change (simple, no need for BroadcastChannel)
+    // Cross-tab: poll cookie on visibility change
     const onVisibility = () => { if (!document.hidden) setTier(getCookieTier()); };
     document.addEventListener("visibilitychange", onVisibility);
 

@@ -49,7 +49,11 @@ export async function POST(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { email } = await req.json();
-  if (!email) return NextResponse.json({ error: "email required" }, { status: 400 });
+  if (!email || typeof email !== "string") return NextResponse.json({ error: "email required" }, { status: 400 });
+  // Basic email format validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+  }
 
   const db = createAdminClient();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tourit.es";

@@ -16,17 +16,21 @@ function isFreeAdmission(fee: string | null): boolean {
 function ReportButton({ stopId }: { stopId: string }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const REASONS = ["Info is outdated", "Wrong location", "Factual error", "Audio issue", "Other"];
 
   async function report(reason: string) {
+    if (submitting) return;
+    setSubmitting(true);
     await fetch("/api/report", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stop_id: stopId, reason }),
-    });
+    }).catch(() => null);
     setSent(true);
     setOpen(false);
+    setSubmitting(false);
   }
 
   if (sent) return <span className="text-xs text-slate-400 dark:text-white/25">Thanks for reporting ✓</span>;
@@ -35,6 +39,7 @@ function ReportButton({ stopId }: { stopId: string }) {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-label="Report an issue with this stop"
         className="text-xs text-slate-400 dark:text-white/25 hover:text-slate-600 dark:hover:text-white/50 transition-colors"
       >
         Report issue
@@ -45,7 +50,8 @@ function ReportButton({ stopId }: { stopId: string }) {
             <button
               key={r}
               onClick={() => report(r)}
-              className="w-full text-left text-xs text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+              disabled={submitting}
+              className="w-full text-left text-xs text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
             >
               {r}
             </button>
@@ -451,6 +457,7 @@ function NarrationPanel({ stop, activeCategory, tier, contentLength, coverColor,
   onCategoryChange: (cat: string) => void;
   onLengthChange: (v: ContentLength) => void;
 }) {
+  const locale = useLocale();
   const categories = Object.keys(stop.content).filter(
     (cat) => (stop.content[cat]?.trim().split(/\s+/).length ?? 0) >= MIN_WORDS_TO_SHOW
   );
@@ -471,7 +478,7 @@ function NarrationPanel({ stop, activeCategory, tier, contentLength, coverColor,
             <p className="text-slate-500 dark:text-white/50 text-sm mb-6 max-w-xs">
               {CATEGORY_LABELS[activeCategory]} narration is available on the Pro plan.
             </p>
-            <Link href="/account" className="bg-slate-900 dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity">
+            <Link href={`/${locale}/account`} className="bg-slate-900 dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-opacity">
               Upgrade to Pro
             </Link>
           </div>
