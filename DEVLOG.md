@@ -2,6 +2,45 @@
 
 ---
 
+## Session 011 — 2026-06-05: Pro features, security audit, and generation overhaul
+
+**Done:**
+- **On-demand city generation (Pro):** `POST /api/generate-city` now returns immediately (job ID) and runs via `next/server after()` in the background — no more Vercel timeout kills. `maxDuration = 300` set on the route
+- **Parallel stop generation:** Stops generated in batches of 5 simultaneously (~5× faster than sequential)
+- **Smart stop count:** `planCity` upgraded to Claude Sonnet; assesses location type first (major_city / city / town / park_reserve / island) and chooses the appropriate number of stops (4–20). Never hallucinates stops to fill a quota
+- **Completion detection:** City is only "done" when it has both stops AND tours. Partial cities (e.g. Melbourne with 4 stops after a timeout) are automatically continued on next request
+- **City + stop photos:** City Wikipedia photo fetched before DB insert; falls back to first stop photo if nothing found. `backfill-city-photos` also uses stop-photo fallback. Improved stop photo search terms
+- **Email notifications:** Completion + failure emails sent via Resend after generation. `RESEND_FROM_EMAIL` env var configurable; defaults to `onboarding@resend.dev` until domain verified
+- **Admin Pro invitations:** `Grant Pro` uses `generateLink()` + Resend instead of Supabase's built-in email sender — bypasses Supabase's 4/hour rate limit. Invited users marked `comped = true`
+- **Cost & Revenue tracker:** New admin "Costs" tab — all-time AI generation costs, monthly infrastructure, USD MRR from paying Pro users only (comped excluded), profitability %, break-even user count. All values in USD (EUR converted at $1.09)
+- **City page redesign:** Narration length picker (Short/Standard/Long) at top; choice passed to player via `?length=` URL param. Free users see 6 stops then blurred preview with upgrade prompt. Pro users see all stops + "Build Custom Tour" CTA
+- **Pro Tour Builder** (`/city/[slug]/build-tour`): Full-screen form — group size, accessibility needs (wheelchair/pram/elderly), day of week (filters closed stops), duration, 8 specialisation themes, narration length, budget filter, language (all 9 locales), walking pace. Live itinerary preview updates in real time
+- **UI/UX audit fixes:** All `<select>` dropdowns fixed with `colorScheme: dark`. Locale prefix added to all tour/city/account links. `auth/callback` open redirect fixed. `auth/signout` preserves locale. `ProfileClient` shows save errors. `FavoriteButton` aria-labels + error state
+- **Security fixes:** Timing-safe admin secret comparison (`timingSafeEqual`) across all 10 admin routes. Report endpoint requires auth + 5/hour rate limit. Prompt injection prevention (strip newlines, length cap on cityName/country inputs). Language whitelist validation. Generic error messages to users, detailed logs server-side only. `supabaseUrl` removed from verify response
+- **Schema bug fixes:** Removed non-existent `tier_required`, `created_by`, `is_official`, `type` columns from all queries and inserts. `build-tour` was failing entirely due to these. `getToursByCity` / `getTourById` queries cleaned up
+
+**Decisions:**
+- Use `after()` from `next/server` for fire-and-forget background work instead of SSE streams — SSE dies when Vercel's function timeout hits; `after()` extends the lifetime
+- Claude Sonnet for city planning (better geographic reasoning), Claude Haiku for individual stop content (cost-effective at scale)
+- Completion signal = stops AND tours both present; tours are generated last so their presence means the full pipeline ran
+- Comped users (admin-invited) excluded from MRR and revenue calculations from day one
+- All monetary values in USD throughout admin cost tracker; EUR subscription prices converted at fixed $1.09 rate
+
+**Problems / Blockers:**
+- `/_global-error` prerender fails locally with Next.js 16 Turbopack (known framework bug, "This is a bug in Next.js"). Vercel builds pass — does not affect production
+- `tourit.es` domain not yet verified in Resend; invitations and completion emails sent from `onboarding@resend.dev` until DNS records added
+- `comped` column on `users` table needs manual SQL: `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS comped boolean DEFAULT false;`
+- Supabase free plan email rate limit (4/hour) was blocking invitations — now fully bypassed via Resend
+
+**Next session:**
+- Verify `tourit.es` domain in Resend (add DNS records to IONOS), then set `RESEND_FROM_EMAIL=TourIt <noreply@tourit.es>` in Vercel
+- Run city photo + stop photo backfill in admin for all existing cities
+- Test Melbourne end-to-end: request via Discover → confirm 12–16 stops generated → email received
+- Seed Tier 1 cities: Paris, Rome, NYC, Tokyo, Barcelona
+- Begin Stripe integration (Trip Pass + Annual Pro webhooks)
+
+---
+
 ## Sessions 006–010 — 2026-05-30
 
 **Goal:** Admin workstation, Google OAuth, city photos, 9-language i18n, curated tour generation, Phase 3 completion and UI polish.

@@ -106,11 +106,13 @@ An AI-powered audio tour app that researches and narrates the story of any place
 
 Before starting Phase 4, confirm these are done:
 
-- [ ] **SQL**: `ALTER TABLE cities ADD COLUMN IF NOT EXISTS photo_url text;` (if not already run)
-- [ ] **City photos**: Run "🏙 City Photos" in `/admin` for Darwin (London + Sydney should have photos)
-- [ ] **tourit.es DNS**: Verify propagation → update Supabase Auth Site URL + Redirect URLs to `https://tourit.es`
+- [x] **SQL**: `ALTER TABLE cities ADD COLUMN IF NOT EXISTS photo_url text;`
+- [x] **Deploy**: Auto-deploying to Vercel on every push; live at https://tourit.es
+- [x] **tourit.es DNS**: Domain live; Supabase Auth URLs updated
+- [ ] **SQL**: `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS comped boolean DEFAULT false;` — needed for comped tracking in cost report
+- [ ] **Resend domain**: Verify `tourit.es` in Resend dashboard → set `RESEND_FROM_EMAIL=TourIt <noreply@tourit.es>` in Vercel
+- [ ] **City photos**: Run "🏙 City Photos" + "📷 Stop Photos" in `/admin` for all cities
 - [ ] **Google OAuth**: Confirm `https://tourit.es` is in Authorized JavaScript Origins in Google Cloud Console
-- [ ] **Deploy**: Push to GitHub → Vercel auto-deploy → smoke test production URL
 - [ ] **Stripe account**: Create Stripe account, note publishable + secret keys (needed for Phase 4)
 
 ---
@@ -119,13 +121,13 @@ Before starting Phase 4, confirm these are done:
 **Goal:** Full Pro feature set. Custom tour building, contextual AI agent, all languages.
 
 - [ ] Stripe subscriptions — Trip Pass (€5.99/7 days) + Annual Pro (€16.99/year)
-- [ ] On-demand city generation — Pro users request any city; async job generates stops + tour via Tavily + Haiku; push/email notification when ready (~5 min). Top 200 pre-warmed at launch (see CITIES_SEED.md).
-- [ ] Tour builder UI: browse stops by city, add/remove/reorder, name + save tour
+- [x] On-demand city generation — Pro users request any city; background job via `after()` generates stops + tours; email notification via Resend when ready. Claude Sonnet plans stops count by location type (4–20)
+- [x] Tour builder UI: group size, accessibility, day, duration, theme, budget, language, pace — live itinerary preview, saves tour and launches player
 - [ ] Walking vs driving mode — toggle swaps duration estimates + filters car-inaccessible stops
 - [ ] Content category selector per tour (all 11 categories for Pro)
-- [ ] Group profile per tour → adapted accessibility notes surfaced in player
+- [x] Group profile per tour → wheelchair/pram/elderly filters applied in tour builder
 - [ ] Shareable tour links — short UUID link, preview for free users + paywall upsell
-- [ ] Favourites — save stops and tours to a personal list
+- [x] Favourites — save stops and tours to a personal list (heart button, profile page)
 - [ ] Stop Q&A agent — contextual chat per stop, RAG on `stop_content`, prompt-cached, Pro only
 - [ ] Q&A agent answers in user's language regardless of content language
 - [ ] DeepL lazy translation — non-primary languages translated on first request, cached
@@ -135,7 +137,10 @@ Before starting Phase 4, confirm these are done:
 - [ ] Framer Motion animations: stop transitions, audio waveform, Q&A panel slide-up
 - [ ] Full responsive breakpoints on player (mobile portrait/landscape, tablet, desktop)
 - [ ] Time-aware warnings — alert user if upcoming stop closes within 2 hours
-- [ ] `created_by` on stops + tours (creator marketplace foundation, no UI yet)
+- [x] Admin Pro invitations — Grant Pro instantly or send invite email via Resend (bypasses Supabase rate limit); comped users excluded from revenue
+- [x] Admin cost & revenue tracker — AI generation costs, infrastructure, USD MRR, profitability %, break-even
+- [x] Narration length (Short/Standard/Long) selectable at city page level, passed to player via URL param
+- [x] Security hardening — timing-safe admin auth, open redirect fix, prompt injection prevention, report rate limiting
 
 ---
 
