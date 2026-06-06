@@ -74,7 +74,15 @@ Return ONLY a valid JSON array, nothing else:
   if (!jsonMatch) throw new Error(`No JSON array in Claude response: ${text.slice(0, 200)}`);
 
   const raw = JSON.parse(jsonMatch[0]);
-  return TourPlanSchema.parse(raw);
+  // Use safeParse per-item so one bad plan doesn't abort the whole batch
+  if (!Array.isArray(raw)) throw new Error("Expected JSON array of tour plans");
+  const SinglePlanSchema = TourPlanSchema.element;
+  const valid = raw
+    .map((item: unknown) => SinglePlanSchema.safeParse(item))
+    .filter((r) => r.success)
+    .map((r) => (r as { success: true; data: typeof TourPlanSchema._type[number] }).data);
+  if (valid.length < 2) throw new Error(`Only ${valid.length} valid tour plans in response (need ≥2)`);
+  return valid;
 }
 
 // Match a Claude-returned stop name to a real DB stop ID.
