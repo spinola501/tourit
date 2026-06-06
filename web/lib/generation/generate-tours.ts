@@ -13,6 +13,10 @@ const TourPlanSchema = z.array(
 
 export type TourPlan = z.infer<typeof TourPlanSchema>[number];
 
+// Hard cap on stops per prebuilt tour. More than this is too long for a real
+// day tour and lets free users hear too much content (defeats the paywall).
+export const MAX_TOUR_STOPS = 10;
+
 export type StopForTour = {
   id: string;
   name: string;
@@ -80,9 +84,23 @@ Return ONLY a valid JSON array, nothing else:
   const valid = raw
     .map((item: unknown) => SinglePlanSchema.safeParse(item))
     .filter((r) => r.success)
-    .map((r) => (r as { success: true; data: typeof TourPlanSchema._type[number] }).data);
+    .map((r) => (r as { success: true; data: TourPlan }).data);
   if (valid.length < 2) throw new Error(`Only ${valid.length} valid tour plans in response (need ≥2)`);
   return valid;
+}
+
+// Resolve a tour plan's stop names to real, de-duplicated DB stop IDs,
+// trimmed to the first MAX_TOUR_STOPS matches (hard cap).
+export function resolveTourStopIds(
+  stopNames: string[],
+  stops: StopForTour[]
+): string[] {
+  const ids: string[] = [];
+  for (const name of stopNames) {
+    const matched = matchStopName(name, stops);
+    if (matched && !ids.includes(matched.id)) ids.push(matched.id);
+  }
+  return ids.slice(0, MAX_TOUR_STOPS);
 }
 
 // Match a Claude-returned stop name to a real DB stop ID.

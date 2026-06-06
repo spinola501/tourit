@@ -7,7 +7,7 @@ import { getCityBySlug, getToursByCity, getStopsByCity } from "@/lib/db/queries"
 import { NavBar } from "@/components/NavBar";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/db/supabase";
 import { CityPageClient, type ClientTour, type ClientStop } from "./CityPageClient";
-import { generateToursForCity, matchStopName } from "@/lib/generation/generate-tours";
+import { generateToursForCity, resolveTourStopIds } from "@/lib/generation/generate-tours";
 
 function isFreeAdmission(fee: string | null | undefined): boolean {
   if (!fee) return false;
@@ -89,6 +89,10 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
         );
 
         for (const plan of plans) {
+          // Apply hard stop cap so tours stay a sensible day length.
+          const stopIds = resolveTourStopIds(plan.stop_names, stopsForTour);
+          if (stopIds.length < 2) continue;
+
           const { data: tour } = await db.from("tours").insert({
             city_id: dbCity.id,
             title: plan.title,
@@ -101,12 +105,9 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
           if (!tour) continue;
 
           let orderIdx = 0;
-          for (const stopName of plan.stop_names) {
-            const matched = matchStopName(stopName, stopsForTour);
-            if (matched) {
-              await db.from("tour_stops").insert({ tour_id: tour.id, stop_id: matched.id, order_index: orderIdx });
-              orderIdx++;
-            }
+          for (const stopId of stopIds) {
+            await db.from("tour_stops").insert({ tour_id: tour.id, stop_id: stopId, order_index: orderIdx });
+            orderIdx++;
           }
         }
         console.log(`[city-page] auto-generated ${plans.length} tours for ${dbCity.name}`);

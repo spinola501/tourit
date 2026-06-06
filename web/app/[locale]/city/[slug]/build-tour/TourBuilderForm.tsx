@@ -209,10 +209,11 @@ export function TourBuilderForm({ city, stops, locale }: { city: City; stops: St
   const totalMins = totalTravelMins + totalStopMins;
 
   function addToTour(stop: Stop) {
+    // Append the stop. Do NOT auto-switch to the route tab on mobile — that
+    // hid the stops pool and made it impossible to add more than one stop.
     setTourStops((prev) => {
-      const next = [...prev, stop];
-      if (next.length === 1) setMobileTab("route");
-      return next;
+      if (prev.some((s) => s.id === stop.id)) return prev; // guard double-add
+      return [...prev, stop];
     });
   }
 

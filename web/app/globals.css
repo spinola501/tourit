@@ -127,4 +127,13 @@
   html {
     @apply font-sans;
   }
+
+  /* Mobile: enable momentum scrolling on any vertical scroll container and
+     don't let horizontal panning hijack vertical scroll on tappable cards. */
+  .overflow-y-auto,
+  .overflow-y-scroll {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+  }
 }

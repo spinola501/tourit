@@ -846,6 +846,8 @@ export default function TourPlayer({ tour, initialLength = "medium" }: { tour: P
               <img
                 src={currentStop.photo_url}
                 alt={currentStop.name}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-24 sm:h-36 object-cover flex-shrink-0"
               />
             ) : (

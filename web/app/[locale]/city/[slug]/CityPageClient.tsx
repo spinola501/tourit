@@ -45,7 +45,7 @@ function NarrationPicker({ value, onChange }: { value: NarrationLength; onChange
             <button
               key={opt}
               onClick={() => onChange(opt)}
-              className={`flex-1 rounded-xl border px-3 py-3 text-left transition-all ${
+              className={`flex-1 rounded-xl border px-3 py-2 sm:py-3 text-left transition-all ${
                 active
                   ? "border-white/50 bg-white/10"
                   : "border-white/10 hover:border-white/30 hover:bg-white/5"
@@ -54,8 +54,10 @@ function NarrationPicker({ value, onChange }: { value: NarrationLength; onChange
               <p className={`text-sm font-semibold ${active ? "text-white" : "text-white/60"}`}>
                 {LENGTH_LABELS[opt].label}
               </p>
-              <p className="text-[10px] text-white/35 mt-0.5">{LENGTH_LABELS[opt].desc}</p>
-              <p className="text-[10px] text-white/25 mt-0.5">{LENGTH_LABELS[opt].words}</p>
+              {/* Hide verbose descriptions on mobile to keep the picker compact
+                  and avoid layout shift. */}
+              <p className="hidden sm:block text-[10px] text-white/35 mt-0.5">{LENGTH_LABELS[opt].desc}</p>
+              <p className="hidden sm:block text-[10px] text-white/25 mt-0.5">{LENGTH_LABELS[opt].words}</p>
             </button>
           );
         })}
@@ -82,7 +84,7 @@ function TourCard({ tour, length, coverColor, userTier, locale }: {
 
   return (
     <Link
-      href={locked ? `/${locale}/account` : `/${locale}/tour/${tour.id}/play?length=${length}`}
+      href={locked ? `/${locale}/account` : `/${locale}/tour/${tour.id}?length=${length}`}
       className="group relative rounded-2xl border border-white/10 hover:border-white/30 overflow-hidden transition-all hover:-translate-y-0.5 block"
       style={{ background: `linear-gradient(135deg, ${color}55 0%, ${color}11 100%)` }}
     >
@@ -246,6 +248,7 @@ function StopCard({ stop, coverColor, isPro, onPreview }: {
   return (
     <div
       onClick={isPro ? () => onPreview(stop) : undefined}
+      style={{ touchAction: "pan-y" }}
       className={`rounded-xl border border-white/10 p-3 flex gap-3 items-start transition-all ${
         isPro ? "cursor-pointer hover:border-white/25 hover:bg-white/[0.03]" : ""
       }`}
