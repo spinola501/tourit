@@ -43,6 +43,25 @@ export type GenerateStopInput = {
   language?: string;
 };
 
+async function callClaude(userPrompt: string): Promise<string> {
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 8192,
+    system: [
+      {
+        type: "text",
+        text: SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [{ role: "user", content: userPrompt }],
+  });
+  return response.content
+    .filter((b) => b.type === "text")
+    .map((b) => (b as { type: "text"; text: string }).text)
+    .join("");
+}
+
 export async function generateStop(input: GenerateStopInput): Promise<GeneratedStop> {
   const language = input.language ?? "en";
 
@@ -50,45 +69,45 @@ export async function generateStop(input: GenerateStopInput): Promise<GeneratedS
   const query = `${input.stopName} ${input.cityName} history facts visit information`;
   const researchResults = await searchWeb(query);
 
-  // 2. Generate with Claude — system prompt is cached (large, stable)
-  const userPrompt = buildUserPrompt({
-    ...input,
-    language,
-    researchResults,
-  });
+  // 2. Generate with Claude — retry with shorter word limit if first attempt is truncated
+  const attempts: Array<{ wordHint: string }> = [
+    { wordHint: "300-500" },
+    { wordHint: "150-250" }, // shorter fallback if output exceeds Haiku's token ceiling
+  ];
 
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",  // Haiku for batch generation
-    max_tokens: 8192,
-    system: [
-      {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" }, // Cache the large system prompt
-      },
-    ],
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  for (let i = 0; i < attempts.length; i++) {
+    const userPrompt = buildUserPrompt({
+      ...input,
+      language,
+      researchResults,
+      wordHint: attempts[i].wordHint,
+    });
 
-  const rawText = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => (b as { type: "text"; text: string }).text)
-    .join("");
-
-  // 3. Parse and validate JSON output
-  let parsed: unknown;
-  try {
-    // Strip any accidental markdown code fences
+    const rawText = await callClaude(userPrompt);
     const cleaned = rawText.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new Error(`Claude returned invalid JSON:\n${rawText.slice(0, 500)}`);
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      if (i < attempts.length - 1) {
+        console.warn(`[generateStop] JSON parse failed (attempt ${i + 1}), retrying with shorter output...`);
+        continue;
+      }
+      throw new Error(`Claude returned invalid JSON:\n${rawText.slice(0, 500)}`);
+    }
+
+    const result = GeneratedStopSchema.safeParse(parsed);
+    if (!result.success) {
+      if (i < attempts.length - 1) {
+        console.warn(`[generateStop] Schema validation failed (attempt ${i + 1}), retrying...`);
+        continue;
+      }
+      throw new Error(`Generated stop failed validation:\n${JSON.stringify(result.error.flatten(), null, 2)}`);
+    }
+
+    return result.data;
   }
 
-  const result = GeneratedStopSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new Error(`Generated stop failed validation:\n${JSON.stringify(result.error.flatten(), null, 2)}`);
-  }
-
-  return result.data;
+  throw new Error("All generation attempts failed");
 }

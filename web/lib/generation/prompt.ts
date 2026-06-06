@@ -36,7 +36,9 @@ export function buildUserPrompt(params: {
   lng: number;
   language: string;
   researchResults: string;
+  wordHint?: string;
 }): string {
+  const wordHint = params.wordHint ?? "300-500";
   return `Generate complete audio tour content for this stop.
 
 Stop: ${params.stopName}
@@ -47,7 +49,7 @@ Output language: ${params.language}
 Web research gathered about this stop:
 ${params.researchResults}
 
-Generate all 11 content categories. Each narration category should be 300-500 words of rich, engaging prose suitable for audio playback. The practical category should be factual and concise.
+Generate all 11 content categories. Each narration category should be ${wordHint} words of rich, engaging prose suitable for audio playback. The practical category should be factual and concise.
 
 Return raw JSON matching this exact structure — no markdown, no code blocks:
 {
