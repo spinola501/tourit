@@ -539,13 +539,17 @@ export function TourBuilderForm({ city, stops, locale }: { city: City; stops: St
 
           {/* Map */}
           <div
-            className="w-full rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] flex items-center justify-center"
+            className="w-full rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] relative"
             style={{ height: "280px" }}
           >
             {tourStops.length > 0 ? (
-              <RouteMap stops={mapStops} color={city.coverColor} />
+              <div className="absolute inset-0">
+                <RouteMap stops={mapStops} color={city.coverColor} />
+              </div>
             ) : (
-              <p className="text-white/25 text-sm">Add stops to see your route on the map</p>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-white/25 text-sm">Add stops to see your route on the map</p>
+              </div>
             )}
           </div>
 

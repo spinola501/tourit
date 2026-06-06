@@ -28,6 +28,12 @@ export default function RouteMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LType.Map | null>(null);
   const overlayRef = useRef<LType.LayerGroup | null>(null);
+  // Keep a ref to the latest stops/color so the init effect can access them
+  // without being stale (the init effect only runs once on mount).
+  const stopsRef = useRef(stops);
+  const colorRef = useRef(color);
+  stopsRef.current = stops;
+  colorRef.current = color;
 
   // Initialize map once (loading leaflet from CDN)
   useEffect(() => {
@@ -59,8 +65,49 @@ export default function RouteMap({
       overlayRef.current = L.layerGroup().addTo(map);
       map.setView([48.85, 2.35], 13);
 
-      // Trigger the redraw effect now that the map exists.
-      redraw();
+      // Give the browser one frame to complete layout before drawing stops,
+      // so Leaflet has the real container dimensions.
+      requestAnimationFrame(() => {
+        map.invalidateSize();
+        redrawWithRefs(L);
+      });
+    }
+
+    function redrawWithRefs(L: typeof LType) {
+      const overlay = overlayRef.current;
+      const map = mapRef.current;
+      if (!overlay || !map) return;
+
+      const currentStops = stopsRef.current;
+      const currentColor = colorRef.current;
+
+      overlay.clearLayers();
+      if (currentStops.length === 0) return;
+
+      if (currentStops.length > 1) {
+        const latlngs = currentStops.map((s) => [s.lat, s.lng] as [number, number]);
+        L.polyline(latlngs, { color: currentColor, weight: 3, opacity: 0.85, dashArray: "7,5" }).addTo(overlay);
+      }
+
+      currentStops.forEach((stop, i) => {
+        const icon = L.divIcon({
+          className: "",
+          html: `<div style="width:26px;height:26px;border-radius:50%;background:${currentColor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)">${i + 1}</div>`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+          popupAnchor: [0, -13],
+        });
+        L.marker([stop.lat, stop.lng], { icon })
+          .bindPopup(`<b>${stop.name}</b>`)
+          .addTo(overlay);
+      });
+
+      if (currentStops.length === 1) {
+        map.setView([currentStops[0].lat, currentStops[0].lng], 15);
+      } else {
+        const bounds = L.latLngBounds(currentStops.map((s) => [s.lat, s.lng] as [number, number]));
+        map.fitBounds(bounds, { padding: [24, 24] });
+      }
     }
 
     if (window.L) {
@@ -91,8 +138,8 @@ export default function RouteMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redraw stops whenever they change
-  function redraw() {
+  // Redraw stops whenever they change (after map is initialized)
+  useEffect(() => {
     const L = window.L;
     const overlay = overlayRef.current;
     const map = mapRef.current;
@@ -125,11 +172,6 @@ export default function RouteMap({
       const bounds = L.latLngBounds(stops.map((s) => [s.lat, s.lng] as [number, number]));
       map.fitBounds(bounds, { padding: [24, 24] });
     }
-  }
-
-  useEffect(() => {
-    redraw();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stops, color]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
