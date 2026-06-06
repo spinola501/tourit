@@ -2,6 +2,28 @@
 
 ---
 
+## Session 014 — 2026-06-06: Vercel build fix (Leaflet + tours INSERT)
+
+**Done:**
+
+- **Vercel Turbopack build fixed:** `components/RouteMap.tsx` was using `import("leaflet").then(...)` inside two `useEffect` hooks. Turbopack's static analyser cannot resolve dynamic `import()` calls inside function bodies and threw `Module not found: Can't resolve 'leaflet'`. Fixed by converting to a static top-level `import * as L from "leaflet"` and removing the `.then()` wrappers. Safe because `RouteMap` is `"use client"` and is only ever loaded via `dynamic(..., { ssr: false })` — it never runs server-side.
+- **`generate-city` tours INSERT fixed:** The background job in `app/api/generate-city/route.ts` was still inserting `theme` and `duration_hours` (non-existent columns) when creating prebuilt tours after city generation. Removed both; added `type: "prebuilt"` instead. This would have silently crashed tour creation for any newly generated city.
+
+**Decisions:**
+- Static import of leaflet at module level is the correct pattern for Turbopack. Dynamic `import()` inside useEffect is a runtime-only pattern that Webpack tolerates but Turbopack requires static tracing for.
+
+**Problems / Blockers:**
+- `APP_URL=https://tourit.es` must still be set in Vercel environment variables.
+- Melbourne content still needs to be seeded from admin panel (EN, then ES).
+
+**Next session:**
+- Seed Melbourne EN + ES from admin panel
+- Verify `APP_URL=https://tourit.es` in Vercel env vars
+- Begin Stripe integration (Trip Pass €5.99/7d + Annual Pro €16.99/yr)
+- Stop Q&A agent (contextual chat per stop, RAG on `stop_content`, Pro only)
+
+---
+
 ## Session 013 — 2026-06-06: Tour builder overhaul, locale fixes, Melbourne, bug sweep
 
 **Done:**
