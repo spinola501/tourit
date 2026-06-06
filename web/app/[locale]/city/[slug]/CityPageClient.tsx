@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useLocale } from "next-intl";
 
@@ -10,7 +10,6 @@ export type ClientTour = {
   id: string;
   title: string;
   tagline: string | null;
-  theme: string | null;
   duration_hours: number | null;
   cover_color: string | null;
   tier: string | null;
@@ -98,11 +97,6 @@ function TourCard({ tour, length, coverColor, userTier, locale }: {
             }`}>
               {isProTour ? "★ Pro" : "Free"}
             </span>
-            {tour.theme && (
-              <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-white/35 border border-white/10">
-                {tour.theme.replace("_", " ")}
-              </span>
-            )}
           </div>
           <span className="text-xs text-white/35 flex-shrink-0">{tour.stop_count} stops</span>
         </div>
@@ -150,11 +144,122 @@ function TourCard({ tour, length, coverColor, userTier, locale }: {
   );
 }
 
+// ── Stop content modal ────────────────────────────────────────────────────────
+
+const CATEGORY_LABELS: Record<string, string> = {
+  history: "History", architecture: "Architecture", culture: "Art & Culture",
+  fauna: "Fauna", flora: "Flora", geo: "Geography", lore: "Legends & Lore",
+  funfacts: "Fun Facts", food: "Food & Gastronomy", photography: "Photography Tips",
+  practical: "Practical Info",
+};
+
+type StopContent = { category: string; text: string };
+
+function StopPreviewModal({ stop, onClose, coverColor }: {
+  stop: ClientStop;
+  onClose: () => void;
+  coverColor: string;
+}) {
+  const [content, setContent] = useState<StopContent[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (content !== null) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/stop?id=${stop.id}&lang=en`);
+      const data = await res.json();
+      setContent(data.content ?? []);
+    } catch {
+      setContent([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [stop.id, content]);
+
+  // Load on mount
+  if (content === null && !loading) load();
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#111] border border-white/10 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Handle bar (mobile) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-start gap-3 px-5 pt-4 pb-4 border-b border-white/10">
+          <div className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-white/5">
+            {stop.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={stop.photo_url} alt={stop.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xl font-bold" style={{ color: coverColor }}>
+                {stop.name[0]}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-white leading-tight">{stop.name}</h3>
+            <p className="text-xs text-white/40 mt-0.5">{stop.duration_minutes} min visit</p>
+            {stop.free_admission && (
+              <span className="text-[9px] text-green-400 bg-green-400/10 border border-green-400/20 px-1.5 py-0.5 rounded-full inline-block mt-1">Free entry</span>
+            )}
+          </div>
+          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors p-1 flex-shrink-0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+          {loading && (
+            <div className="flex items-center gap-2 text-white/30 text-sm py-4">
+              <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              Loading content…
+            </div>
+          )}
+          {content?.map((c) => (
+            <div key={c.category}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">
+                {CATEGORY_LABELS[c.category] ?? c.category}
+              </p>
+              <p className="text-sm text-white/70 leading-relaxed">{c.text}</p>
+            </div>
+          ))}
+          {content?.length === 0 && !loading && (
+            <p className="text-white/30 text-sm">No content available yet.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Stop card ─────────────────────────────────────────────────────────────────
 
-function StopCard({ stop, coverColor }: { stop: ClientStop; coverColor: string }) {
+function StopCard({ stop, coverColor, isPro, onPreview }: {
+  stop: ClientStop;
+  coverColor: string;
+  isPro: boolean;
+  onPreview: (s: ClientStop) => void;
+}) {
   return (
-    <div className="rounded-xl border border-white/10 p-3 flex gap-3 items-start">
+    <div
+      onClick={isPro ? () => onPreview(stop) : undefined}
+      className={`rounded-xl border border-white/10 p-3 flex gap-3 items-start transition-all ${
+        isPro ? "cursor-pointer hover:border-white/25 hover:bg-white/[0.03]" : ""
+      }`}
+    >
       <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-white/5 flex items-center justify-center">
         {stop.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -179,6 +284,11 @@ function StopCard({ stop, coverColor }: { stop: ClientStop; coverColor: string }
           </div>
         )}
       </div>
+      {isPro && (
+        <svg className="flex-shrink-0 w-4 h-4 text-white/20 self-center" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 18l6-6-6-6"/>
+        </svg>
+      )}
     </div>
   );
 }
@@ -202,6 +312,8 @@ export function CityPageClient({
 }) {
   const locale = useLocale();
   const [length, setLength] = useState<NarrationLength>("medium");
+  const [previewStop, setPreviewStop] = useState<ClientStop | null>(null);
+  const isPro = userTier === "pro";
 
   return (
     <div className="space-y-16">
@@ -303,25 +415,26 @@ export function CityPageClient({
               <h2 className="text-sm font-semibold uppercase tracking-widest text-white/40 mb-1">
                 All Stops in {cityName}
               </h2>
-              <p className="text-xs text-white/30">{stops.length} stops</p>
+              <p className="text-xs text-white/30">
+                {stops.length} stops{isPro ? " · Tap any stop to preview its content" : ""}
+              </p>
             </div>
-            {userTier === "free" && (
+            {!isPro && (
               <Link href={`/${locale}/account`} className="text-xs text-yellow-400 hover:text-yellow-300 border border-yellow-400/30 hover:border-yellow-400/60 px-3 py-1.5 rounded-full transition-colors flex-shrink-0">
                 ★ Pro to build custom tour
               </Link>
             )}
           </div>
 
-          <div className={`grid sm:grid-cols-2 gap-2 ${userTier === "free" ? "relative" : ""}`}>
-            {(userTier === "free" ? stops.slice(0, 6) : stops).map((stop) => (
-              <StopCard key={stop.id} stop={stop} coverColor={coverColor} />
+          <div className={`grid sm:grid-cols-2 gap-2 ${!isPro ? "relative" : ""}`}>
+            {(!isPro ? stops.slice(0, 6) : stops).map((stop) => (
+              <StopCard key={stop.id} stop={stop} coverColor={coverColor} isPro={isPro} onPreview={setPreviewStop} />
             ))}
-            {userTier === "free" && stops.length > 6 && (
+            {!isPro && stops.length > 6 && (
               <div className="sm:col-span-2 relative">
-                {/* Blurred remaining stops hint */}
                 <div className="grid sm:grid-cols-2 gap-2 opacity-20 blur-sm pointer-events-none select-none">
                   {stops.slice(6, 10).map((stop) => (
-                    <StopCard key={stop.id} stop={stop} coverColor={coverColor} />
+                    <StopCard key={stop.id} stop={stop} coverColor={coverColor} isPro={false} onPreview={() => {}} />
                   ))}
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -337,6 +450,15 @@ export function CityPageClient({
             )}
           </div>
         </section>
+      )}
+
+      {/* ── Stop preview modal (Pro) ── */}
+      {previewStop && (
+        <StopPreviewModal
+          stop={previewStop}
+          onClose={() => setPreviewStop(null)}
+          coverColor={coverColor}
+        />
       )}
     </div>
   );

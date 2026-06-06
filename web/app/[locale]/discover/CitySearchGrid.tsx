@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useLocale } from "next-intl";
 
 type City = {
   slug: string;
@@ -14,6 +15,7 @@ type City = {
 };
 
 export function CitySearchGrid({ cities, initialQ = "" }: { cities: City[]; initialQ?: string }) {
+  const locale = useLocale();
   const [q, setQ] = useState(initialQ);
 
   const filtered = !q.trim()
@@ -50,7 +52,7 @@ export function CitySearchGrid({ cities, initialQ = "" }: { cities: City[]; init
               return (
                 <Link
                   key={city.slug}
-                  href={`/city/${city.slug}`}
+                  href={`/${locale}/city/${city.slug}`}
                   className="group relative rounded-2xl overflow-hidden aspect-[4/3] block"
                 >
                   {city.photo_url ? (

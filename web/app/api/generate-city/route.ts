@@ -198,7 +198,7 @@ async function runGeneration(
 
     console.log(`[generate-city] complete: ${generatedIds.length} stops, sending email to ${userEmail}`);
 
-    const cityUrl = `${appUrl}/en/city/${cityRecord!.slug}`;
+    const cityUrl = `${appUrl}/${language}/city/${cityRecord!.slug}`;
     await sendEmail(userEmail, `Your ${planCityName} tour is ready!`, `
       <div style="font-family:sans-serif;max-width:520px;margin:40px auto;padding:40px;background:#0d0d0d;color:#fff;border-radius:16px">
         <p style="margin:0 0 4px;font-size:12px;color:#666;letter-spacing:2px;text-transform:uppercase">TourIt</p>
@@ -253,7 +253,11 @@ export async function POST(req: NextRequest) {
     // Has stops but no tours (incomplete run), or neither — regenerate
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tourit.es";
+  // Use APP_URL (server-only) so localhost dev value never leaks into emails.
+  // Falls back to Vercel's auto-set deployment URL, then the hardcoded production domain.
+  const appUrl = process.env.APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    ?? "https://tourit.es";
 
   after(async () => {
     await runGeneration(cityName, country, language, user.email ?? "", appUrl);

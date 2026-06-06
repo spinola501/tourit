@@ -144,6 +144,17 @@ Before starting Phase 4, confirm these are done:
 - [x] Full app audit — 31 issues identified across links, auth, schema, UX, performance; all critical/high fixed
 - [x] NavBar locale-aware links — all hrefs use getLocale(), no more hardcoded /en
 - [x] Tier cookie DB sync — useTier hook syncs with Supabase on mount for immediate Pro recognition
+- [x] Tour builder mobile responsive — tab bar switches Stops/Route panels; auto-switches on first stop added
+- [x] Tour builder — GPS route map (Leaflet, CartoDB dark tiles, numbered markers, dashed polyline)
+- [x] Tour builder — travel time estimates (Haversine + walking pace: leisurely/moderate/fast)
+- [x] Tour builder — 8 specialisation themes (History, Architecture, Gastronomy, Photography, Family, Nature, Nightlife, Standard)
+- [x] Tour builder — Export to Google Maps button; "Navigate to this stop" in TourPlayer
+- [x] Stop content preview modal for Pro users on city page (all categories, loaded on demand)
+- [x] Melbourne added to seed (16 stops); admin seed supports `language` param for multilingual content
+- [x] Status endpoint fixed — returns "done" only when both stops AND tours exist
+- [x] City page auto-heals — `after()` generates tours in background when stops exist but tours don't
+- [x] Email links — `APP_URL` server-only env var prevents localhost from leaking into production emails
+- [x] `theme` column bug fixed in queries — was causing all tour listings and the custom builder to fail
 
 ---
 

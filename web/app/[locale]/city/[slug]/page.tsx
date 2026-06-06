@@ -2,10 +2,12 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { getCityBySlug, getToursByCity, getStopsByCity } from "@/lib/db/queries";
 import { NavBar } from "@/components/NavBar";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/db/supabase";
 import { CityPageClient, type ClientTour, type ClientStop } from "./CityPageClient";
+import { generateToursForCity, matchStopName } from "@/lib/generation/generate-tours";
 
 function isFreeAdmission(fee: string | null | undefined): boolean {
   if (!fee) return false;
@@ -44,7 +46,6 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
     id: t.id,
     title: t.title,
     tagline: t.tagline ?? null,
-    theme: (t as unknown as { theme?: string }).theme ?? null,
     duration_hours: (t as unknown as { duration_hours?: number }).duration_hours ?? null,
     cover_color: t.cover_color ?? null,
     tier: (t as unknown as { tier?: string }).tier ?? null,
@@ -62,6 +63,59 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
     photo_url: s.photo_url,
     free_admission: isFreeAdmission(s.stop_practical?.admission_fee),
   }));
+
+  // Auto-generate tours in the background when stops exist but tours don't yet
+  if (dbTours.length === 0 && dbStops.length >= 5) {
+    after(async () => {
+      try {
+        const db = createAdminClient();
+        // Re-check so concurrent page loads don't double-generate
+        const { count } = await db.from("tours").select("*", { count: "exact", head: true })
+          .eq("city_id", dbCity.id).eq("type", "prebuilt");
+        if ((count ?? 0) > 0) return;
+
+        const stopsForTour = (dbStops as unknown as {
+          id: string; name: string; lat: number | null; lng: number | null;
+          duration_minutes: number; tags: string[];
+        }[]).map((s) => ({
+          id: s.id, name: s.name,
+          lat: s.lat ?? 0, lng: s.lng ?? 0,
+          duration_minutes: s.duration_minutes ?? 45,
+          tags: (s.tags as string[]) ?? [],
+        }));
+
+        const plans = await generateToursForCity(
+          { name: dbCity.name, country: dbCity.country },
+          stopsForTour
+        );
+
+        for (const plan of plans) {
+          const { data: tour } = await db.from("tours").insert({
+            city_id: dbCity.id,
+            title: plan.title,
+            tagline: plan.tagline,
+            type: "prebuilt",
+            tier: "free",
+            cover_color: dbCity.cover_color ?? "#1a3a5c",
+            is_official: true,
+          }).select("id").single();
+          if (!tour) continue;
+
+          let orderIdx = 0;
+          for (const stopName of plan.stop_names) {
+            const matched = matchStopName(stopName, stopsForTour);
+            if (matched) {
+              await db.from("tour_stops").insert({ tour_id: tour.id, stop_id: matched.id, order_index: orderIdx });
+              orderIdx++;
+            }
+          }
+        }
+        console.log(`[city-page] auto-generated ${plans.length} tours for ${dbCity.name}`);
+      } catch (err) {
+        console.error("[city-page] auto tour generation failed:", err);
+      }
+    });
+  }
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white">

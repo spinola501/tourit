@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { createAdminClient, createServerSupabaseClient } from "@/lib/db/supabase";
 import { NavBar } from "@/components/NavBar";
 
@@ -29,10 +29,11 @@ async function getUserInterests(): Promise<string[]> {
 }
 
 export default async function Home() {
-  const [cities, t, interests] = await Promise.all([
+  const [cities, t, interests, locale] = await Promise.all([
     getFeaturedCities(),
     getTranslations(),
     getUserInterests(),
+    getLocale(),
   ]);
 
   // Simple personalised recommendation: highlight cities with tours matching user interests
@@ -60,7 +61,7 @@ export default async function Home() {
           {t("home.tagline")}
         </p>
 
-        <form action="/discover" className="relative flex gap-2 max-w-md mx-auto">
+        <form action={`/${locale}/discover`} className="relative flex gap-2 max-w-md mx-auto">
           <input
             name="q"
             type="text"
@@ -82,7 +83,7 @@ export default async function Home() {
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40">
             {hasInterests ? "Recommended for you" : t("home.featuredCities")}
           </h2>
-          <Link href="/discover" className="text-xs text-white/30 hover:text-white/70 transition-colors">
+          <Link href={`/${locale}/discover`} className="text-xs text-white/30 hover:text-white/70 transition-colors">
             {t("home.seeAll")} →
           </Link>
         </div>
@@ -98,7 +99,7 @@ export default async function Home() {
               return (
                 <Link
                   key={city.slug}
-                  href={`/city/${city.slug}`}
+                  href={`/${locale}/city/${city.slug}`}
                   className="group relative rounded-2xl overflow-hidden aspect-[4/3] block"
                 >
                   {photoUrl ? (
@@ -175,7 +176,7 @@ export default async function Home() {
               ))}
             </ul>
             <div className="mt-8 pt-6 border-t border-white/8">
-              <Link href="/auth/login" className="text-sm text-white/40 hover:text-white transition-colors">
+              <Link href={`/${locale}/auth/login`} className="text-sm text-white/40 hover:text-white transition-colors">
                 Start free →
               </Link>
             </div>

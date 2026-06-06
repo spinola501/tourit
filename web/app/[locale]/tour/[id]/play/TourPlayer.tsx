@@ -209,7 +209,7 @@ function useKokoro(voice: string) {
 
   // ── Web Speech API helpers ──
   const stopFallback = useCallback(() => {
-    window.speechSynthesis.cancel();
+    window.speechSynthesis?.cancel();
     setIsPlaying(false);
     setProgress(0);
   }, []);
@@ -223,6 +223,7 @@ function useKokoro(voice: string) {
 
     // ── Web Speech API path ──
     if (fallbackRef.current) {
+      if (!window.speechSynthesis) { setIsPlaying(false); return; }
       window.speechSynthesis.cancel();
       const utt = new SpeechSynthesisUtterance(text);
       utt.lang = "en-GB";
@@ -284,7 +285,7 @@ function useKokoro(voice: string) {
 
   const pause = useCallback(async () => {
     if (fallbackRef.current) {
-      window.speechSynthesis.pause();
+      window.speechSynthesis?.pause();
       setIsPlaying(false);
       return;
     }
@@ -298,7 +299,7 @@ function useKokoro(voice: string) {
 
   const resumeAudio = useCallback(async () => {
     if (fallbackRef.current) {
-      window.speechSynthesis.resume();
+      window.speechSynthesis?.resume();
       setIsPlaying(true);
       return;
     }
@@ -763,6 +764,21 @@ export default function TourPlayer({ tour, initialLength = "medium" }: { tour: P
                             {isFreeAdmission(s.practical?.admission_fee ?? null) && (
                               <span className="text-[9px] text-green-600 dark:text-green-400/60">Free</span>
                             )}
+                            {s.lat && s.lng && (
+                              <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open in Google Maps"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[9px] text-blue-500 dark:text-blue-400/70 hover:text-blue-600 dark:hover:text-blue-300 flex items-center gap-0.5"
+                              >
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/>
+                                </svg>
+                                Maps
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -850,6 +866,20 @@ export default function TourPlayer({ tour, initialLength = "medium" }: { tour: P
                     initialFavorited={favoriteIds.has(currentStop.id)}
                     size="sm"
                   />
+                  {currentStop.lat && currentStop.lng && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${currentStop.lat},${currentStop.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Navigate to this stop in Google Maps"
+                      className="w-7 h-7 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-white/50 hover:bg-blue-100 dark:hover:bg-blue-500/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex-shrink-0"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                        <circle cx="12" cy="9" r="2.5"/>
+                      </svg>
+                    </a>
+                  )}
                   {isLikelyClosed(currentStop.practical?.opening_hours ?? null, selectedDay) && (
                     <span className="text-xs text-amber-600 dark:text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex-shrink-0">
                       ⚠ May be closed {DAY_LABELS[selectedDay]}

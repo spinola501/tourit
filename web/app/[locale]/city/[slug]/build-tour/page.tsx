@@ -27,6 +27,7 @@ export default async function BuildTourPage({ params }: { params: Promise<{ slug
   const rawStops = await getStopsByCity(dbCity.id);
   const stops = (rawStops as unknown as {
     id: string; name: string; duration_minutes: number; tags: string[];
+    lat: number; lng: number;
     photo_url: string | null;
     stop_practical: { admission_fee: string | null; opening_hours: string | null } | null;
   }[]).map((s) => ({
@@ -34,6 +35,8 @@ export default async function BuildTourPage({ params }: { params: Promise<{ slug
     name: s.name,
     duration_minutes: s.duration_minutes,
     tags: s.tags ?? [],
+    lat: s.lat,
+    lng: s.lng,
     photo_url: s.photo_url,
     admission_fee: s.stop_practical?.admission_fee ?? null,
     opening_hours: s.stop_practical?.opening_hours ?? null,

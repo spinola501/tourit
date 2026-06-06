@@ -145,6 +145,37 @@ const SEED_STOPS = [
     ],
   },
   {
+    citySlug: "melbourne",
+    cityName: "Melbourne",
+    country: "Australia",
+    emoji: "🦘",
+    coverColor: "#1a2a4a",
+    stops: [
+      // City centre icons
+      { name: "Federation Square", lat: -37.8179, lng: 144.9691 },
+      { name: "Flinders Street Station", lat: -37.8182, lng: 144.9671 },
+      { name: "St Paul's Cathedral Melbourne", lat: -37.8170, lng: 144.9676 },
+      { name: "Queen Victoria Market", lat: -37.8067, lng: 144.9565 },
+      // Art, culture & museums
+      { name: "National Gallery of Victoria", lat: -37.8225, lng: 144.9683 },
+      { name: "Melbourne Museum", lat: -37.8031, lng: 144.9717 },
+      { name: "Royal Exhibition Building & Carlton Gardens", lat: -37.8051, lng: 144.9716 },
+      { name: "ACMI – Australian Centre for the Moving Image", lat: -37.8180, lng: 144.9695 },
+      // Parks & nature
+      { name: "Royal Botanic Gardens Melbourne", lat: -37.8302, lng: 144.9796 },
+      { name: "Fitzroy Gardens & Captain Cook's Cottage", lat: -37.8148, lng: 144.9803 },
+      // Viewpoints & architecture
+      { name: "Eureka Skydeck", lat: -37.8218, lng: 144.9682 },
+      { name: "Shrine of Remembrance", lat: -37.8306, lng: 144.9736 },
+      // Sport & entertainment
+      { name: "Melbourne Cricket Ground", lat: -37.8199, lng: 144.9840 },
+      { name: "Luna Park St Kilda", lat: -37.8671, lng: 144.9789 },
+      // Street art & neighbourhoods
+      { name: "Hosier Lane", lat: -37.8185, lng: 144.9673 },
+      { name: "Fitzroy & Collingwood Street Art Precinct", lat: -37.8003, lng: 144.9797 },
+    ],
+  },
+  {
     citySlug: "darwin",
     cityName: "Darwin",
     country: "Australia",
@@ -192,7 +223,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
-  const { citySlug } = await req.json().catch(() => ({}));
+  const { citySlug, language = "en" } = await req.json().catch(() => ({}));
   const db = createAdminClient();
 
   const results: { stop: string; status: string; error?: string }[] = [];
@@ -236,7 +267,7 @@ export async function POST(req: NextRequest) {
     const generatedStopIds: string[] = [];
 
     for (const stop of city.stops) {
-      // Skip if already generated (check by name — case-insensitive)
+      // Check if stop record already exists
       const { data: existing } = await db
         .from("stops")
         .select("id")
@@ -246,10 +277,53 @@ export async function POST(req: NextRequest) {
 
       if (existing) {
         generatedStopIds.push(existing.id);
-        results.push({ stop: stop.name, status: "skipped (already exists)" });
+
+        // Stop exists — check if content in the requested language already exists
+        const { count: contentCount } = await db
+          .from("stop_content")
+          .select("id", { count: "exact", head: true })
+          .eq("stop_id", existing.id)
+          .eq("language", language);
+
+        if ((contentCount ?? 0) > 0) {
+          results.push({ stop: stop.name, status: `skipped (${language} content already exists)` });
+          continue;
+        }
+
+        // Generate content in the new language for the existing stop
+        try {
+          const generated = await generateStop({
+            stopName: stop.name,
+            cityName: city.cityName,
+            country: city.country,
+            lat: stop.lat,
+            lng: stop.lng,
+            language,
+          });
+
+          await db.from("stop_content").insert(
+            Object.entries(generated.content).map(([category, text]) => ({
+              stop_id: existing.id,
+              category,
+              language,
+              text,
+              word_count: text.split(/\s+/).length,
+            }))
+          );
+
+          results.push({ stop: stop.name, status: `${language} content generated` });
+          console.log(`✓ ${stop.name} (${language} content)`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Unknown";
+          results.push({ stop: stop.name, status: "error", error: msg });
+          console.error(`✗ ${stop.name} (${language}):`, msg);
+        }
+
+        await sleep(3000);
         continue;
       }
 
+      // Stop doesn't exist — create stop record + practical + content
       try {
         const generated = await generateStop({
           stopName: stop.name,
@@ -257,7 +331,7 @@ export async function POST(req: NextRequest) {
           country: city.country,
           lat: stop.lat,
           lng: stop.lng,
-          language: "en",
+          language,
         });
 
         // Fetch photo from Wikipedia (non-blocking — failure doesn't abort stop generation)
@@ -292,7 +366,7 @@ export async function POST(req: NextRequest) {
           Object.entries(generated.content).map(([category, text]) => ({
             stop_id: newStop.id,
             category,
-            language: "en",
+            language,
             text,
             word_count: text.split(/\s+/).length,
           }))

@@ -445,7 +445,8 @@ function ReportsSection({ secret }: { secret: string }) {
 
 function ToolsSection({ secret }: { secret: string }) {
   const [tier, setTier] = useState<"free" | "pro">("free");
-  const [seedCity, setSeedCity] = useState("darwin");
+  const [seedCity, setSeedCity] = useState("melbourne");
+  const [seedLang, setSeedLang] = useState("en");
   const [seeding, setSeeding] = useState(false);
   const [generatingTours, setGeneratingTours] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
@@ -492,11 +493,11 @@ function ToolsSection({ secret }: { secret: string }) {
   }
 
   async function runSeed() {
-    setSeeding(true); setSeedResults([]); setStatus(`Seeding ${seedCity}…`);
+    setSeeding(true); setSeedResults([]); setStatus(`Seeding ${seedCity} [${seedLang}]…`);
     const r = await fetch("/api/admin/seed", {
       method: "POST",
       headers: { "x-admin-secret": secret, "Content-Type": "application/json" },
-      body: JSON.stringify({ citySlug: seedCity }),
+      body: JSON.stringify({ citySlug: seedCity, language: seedLang }),
     });
     const d = await r.json();
     setSeedResults(d.results ?? []);
@@ -581,8 +582,15 @@ function ToolsSection({ secret }: { secret: string }) {
           <select value={seedCity} onChange={(e) => setSeedCity(e.target.value)}
             style={{ colorScheme: "dark" }}
             className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white text-sm focus:outline-none">
-            {["darwin", "sydney", "london", "paris", "rome", "nyc", "tokyo", "barcelona"].map((c) => (
+            {["melbourne", "darwin", "sydney", "london", "paris", "rome", "nyc", "tokyo", "barcelona"].map((c) => (
               <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+            ))}
+          </select>
+          <select value={seedLang} onChange={(e) => setSeedLang(e.target.value)}
+            style={{ colorScheme: "dark" }}
+            className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-white text-sm focus:outline-none">
+            {["en", "es", "fr", "de", "pt", "it"].map((l) => (
+              <option key={l} value={l}>{l.toUpperCase()}</option>
             ))}
           </select>
           <button onClick={runSeed} disabled={seeding}

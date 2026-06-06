@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { getTourById } from "@/lib/db/queries";
 import { StopPreviewCard } from "./StopPreviewCard";
@@ -23,7 +24,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default async function TourPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const [{ id }, locale] = await Promise.all([params, getLocale()]);
   const tour = await getTourById(id);
   if (!tour) notFound();
 
@@ -78,7 +79,7 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
       >
         <div className="max-w-3xl mx-auto">
           {city && (
-            <Link href={`/city/${city.slug}`} className="text-sm text-white/40 hover:text-white transition-colors mb-6 inline-block">
+            <Link href={`/${locale}/city/${city.slug}`} className="text-sm text-white/40 hover:text-white transition-colors mb-6 inline-block">
               ← {city.name}
             </Link>
           )}
@@ -112,7 +113,7 @@ export default async function TourPage({ params }: { params: Promise<{ id: strin
           )}
 
           <Link
-            href={`/tour/${tour.id}/play`}
+            href={`/${locale}/tour/${tour.id}/play`}
             className="inline-flex items-center gap-2 bg-white text-black px-8 py-3 rounded-full font-semibold hover:bg-white/90 transition-colors"
           >
             ▶ Start Tour

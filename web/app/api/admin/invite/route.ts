@@ -10,7 +10,7 @@ async function sendInviteEmail(email: string, actionLink: string) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { error: "RESEND_API_KEY not set" };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tourit.es";
+  const appUrl = process.env.APP_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ?? "https://tourit.es";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   }
 
   const db = createAdminClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tourit.es";
+  const appUrl = process.env.APP_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ?? "https://tourit.es";
 
   // Check if user already exists in auth
   const { data: { users }, error: listErr } = await db.auth.admin.listUsers({ perPage: 1000 });

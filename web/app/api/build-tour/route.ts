@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
     city_id: cityId,
     title: title ?? "Custom Tour",
     tagline: tagline ?? null,
-    theme: theme ?? "standard",
     cover_color: coverColor ?? "#1a3a5c",
     tier: "pro",
+    type: "custom",
   }).select("id").single();
 
   if (error || !tour) return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });

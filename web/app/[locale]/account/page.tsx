@@ -2,14 +2,15 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { NavBar } from "@/components/NavBar";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/db/supabase";
 
 export default async function AccountPage() {
-  const supabase = await createServerSupabaseClient();
+  const [supabase, locale] = await Promise.all([createServerSupabaseClient(), getLocale()]);
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth/login");
+  if (!user) redirect(`/${locale}/auth/login`);
 
   const db = createAdminClient();
   const { data: profile } = await db
@@ -21,7 +22,7 @@ export default async function AccountPage() {
   const tier = (profile?.tier as "free" | "pro") ?? "free";
   const name = profile?.name ?? user.user_metadata?.full_name ?? user.email ?? "";
 
-  if (tier === "pro") redirect("/profile");
+  if (tier === "pro") redirect(`/${locale}/profile`);
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-white">
@@ -68,7 +69,7 @@ export default async function AccountPage() {
 
         <div className="space-y-3">
           <p className="text-white/30 text-sm">
-            Stripe billing is coming soon. <Link href="/profile" className="text-white/60 underline hover:text-white transition-colors">Go to your profile →</Link>
+            Stripe billing is coming soon. <Link href={`/${locale}/profile`} className="text-white/60 underline hover:text-white transition-colors">Go to your profile →</Link>
           </p>
         </div>
       </div>

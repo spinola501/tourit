@@ -2,6 +2,43 @@
 
 ---
 
+## Session 013 — 2026-06-06: Tour builder overhaul, locale fixes, Melbourne, bug sweep
+
+**Done:**
+
+- **`theme` column error fixed (root cause):** `getToursByCity` and `getTourById` in `queries.ts` were SELECTing a `theme` column that doesn't exist in the `tours` table. This caused every tour listing and tour detail to fail silently — tours appeared missing and the custom tour builder threw the "could not find the 'theme' column" Supabase schema cache error. Both queries now omit `theme`. `ClientTour` type and city page server mapping updated to match.
+- **`build-tour` INSERT also fixed:** The custom tour builder was also inserting `theme` on save. Replaced with `type: "custom"` (which IS a real column) so custom tours are distinguishable from prebuilt ones.
+- **GPS stop navigation:** Stops now show a pin icon button linking to Google Maps (`https://www.google.com/maps/search/?api=1&query=lat,lng`). Available in both the TourPlayer stop header and the sidebar stop list (Pro). Requires `lat`/`lng` on stop records.
+- **Tour builder — route builder UI:** Full redesign. Available stops pool on the left with `+` to add; route list on the right with `↑↓×` reorder/remove. Haversine travel-time estimates between stops (walking pace: leisurely 3km/h / moderate 4.5km/h / fast 6km/h). Total tour time = stop time + travel time. In-app Leaflet map with numbered markers and dashed polyline. "Export to Google Maps" button. All updates live as stops are added/reordered.
+- **Tour builder — responsive mobile:** Tab bar ("Stops N / Route N · Xh") switches panels on mobile. First stop added auto-switches to Route tab. Scroll height capped at 60vh on mobile. Desktop unchanged (side-by-side grid).
+- **Tour builder — specialisations:** 8 theme filters (Standard, History, Architecture, Gastronomy, Photography, Family, Nature, Nightlife) sort the available stops pool by tag matching. Visible in the Filters & Preferences accordion.
+- **Stop content preview for Pro users (city page):** Pro users can now tap any stop card on the city page to open a bottom-sheet modal with all content categories (history, architecture, culture, funfacts, practical, etc.) loaded on demand via new `GET /api/stop?id=...&lang=en` endpoint. Free users still see 6 stops with a blurred upgrade prompt.
+- **Melbourne added:** 16 curated stops added to seed script (Federation Square, Flinders Street Station, St Paul's Cathedral Melbourne, Queen Victoria Market, NGV, Melbourne Museum, Royal Exhibition Building, ACMI, Royal Botanic Gardens, Fitzroy Gardens, Eureka Skydeck, Shrine of Remembrance, MCG, Luna Park St Kilda, Hosier Lane, Fitzroy Street Art Precinct). Admin seed now accepts `language` param (default `en`); for existing stops it generates content in the new language without re-creating the stop record. Language selector added to admin panel "Generate Content" section.
+- **Status endpoint fixed:** `GET /api/generate-city/status` was returning `"done"` as soon as `stopCount > 0`, before tours were created. Now requires both stops AND tours to exist before returning done. This was causing Melbourne (4 stops, 0 tours) to show as complete and the city-request flow to abort early.
+- **Auto tour generation (self-healing):** City page now uses `after()` to auto-generate tours in the background when a city has stops but 0 prebuilt tours. Page loads instantly; tours appear on next refresh. Deduplication check prevents parallel page loads from double-generating. Fixes Melbourne and any other city that was partially seeded.
+- **Legacy city redirect fixed:** `app/city/[slug]/page.tsx` (no-locale redirect) was hardcoded to `/en/city/${slug}`. Now uses `getLocale()` so Spanish users stay in `/es/`.
+- **Email localhost fix:** `generate-city` and `admin/invite` routes were using `NEXT_PUBLIC_APP_URL` for email links, which resolves to `http://localhost:3000` in development — and in production if the Vercel env var wasn't overriding it. Changed to use `APP_URL` (server-only, never exposed client-side) → `VERCEL_URL` (auto-set by Vercel) → `"https://tourit.es"` fallback. **Required:** set `APP_URL=https://tourit.es` in Vercel environment variables.
+- **Email locale fix:** Completion email link was hardcoded to `/en/city/...`. Now uses the `language` that was requested.
+- **`speechSynthesis` null guards:** All Web Speech API calls in TourPlayer (`.cancel()`, `.pause()`, `.resume()`, `.speak()`) now use optional chaining. Some Android browsers expose `speechSynthesis` as `undefined` in certain contexts.
+- **Locale link audit:** All remaining hardcoded locale-less links fixed across home page, account page, `CitySearchGrid`, and tour detail page. All `redirect()` calls and `<Link>` hrefs now use `/${locale}/...`.
+
+**Decisions:**
+- `after()` for auto tour generation on city page load — zero UX impact (page loads instantly), self-heals any partially-seeded city. The double-generation guard is a fresh DB count check; accepts the race for the rare concurrent page load case (tour regeneration is idempotent: deletes prebuilt then recreates).
+- `APP_URL` env var (non-public) for server-side email links — prevents dev localhost value from leaking into production emails regardless of how Vercel env vars are configured.
+
+**Problems / Blockers:**
+- `APP_URL=https://tourit.es` must be set in Vercel environment variables for email links to be correct. Without it, falls back to `VERCEL_URL` (deployment subdomain) → `tourit.es`.
+- Melbourne tours will auto-generate on first city page visit (via `after()`). Admin can also trigger via "🗺 Gen Tours" button if needed immediately.
+- Spanish content for Melbourne: go to admin → Generate Content → select Melbourne + ES → Run Seed.
+
+**Next session:**
+- Seed Melbourne EN from admin panel, then seed ES
+- Verify `APP_URL=https://tourit.es` set in Vercel
+- Begin Stripe integration (Trip Pass €5.99/7d + Annual Pro €16.99/yr)
+- Stop Q&A agent (contextual chat per stop, RAG on `stop_content`, Pro only)
+
+---
+
 ## Session 012 — 2026-06-05: Full app audit and link/auth/UX fixes
 
 **Done:**
