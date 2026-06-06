@@ -22,6 +22,27 @@
 - Begin Stripe integration (Trip Pass €5.99/7d + Annual Pro €16.99/yr)
 - Stop Q&A agent (contextual chat per stop, RAG on `stop_content`, Pro only)
 
+### Addendum — same day: CDN Leaflet + schema-column sweep
+
+The "static top-level import" fix above did **not** resolve the Vercel build. Turbopack on Vercel was building from the repo root, so even a static `import * as L from "leaflet"` failed with `Module not found: Can't resolve 'leaflet'` because `node_modules/leaflet` lives under `web/`, not the repo root. Real fixes applied this session:
+
+- **`components/RouteMap.tsx` rewritten to load Leaflet from CDN.** Removed the npm import entirely. Now uses a type-only `import type * as LType from "leaflet"` (erased at compile time, so Turbopack never tries to resolve the package), declares `Window.L`, and at runtime injects the Leaflet CSS link + `unpkg.com/leaflet@1.9.4` script, calling `initMap(window.L)` on load (or immediately if already present). All map behaviour preserved (CartoDB dark tiles, numbered divIcon markers, dashed polyline, fitBounds). Refs kept as `useRef<LType.Map | null>`.
+- **`package.json`:** removed `"leaflet"` from dependencies (kept `@types/leaflet` for typing); ran `npm install` to update `package-lock.json` (1 package removed).
+- **Root cause of "tours not working for any city" found + fixed.** The `tours` table has **no `tier` column** — the real column is `tier_required` (and there is no `theme` or `duration_hours` column either). Every tour INSERT across the codebase was writing `tier`, so PostgREST rejected them ("Could not find the 'tier' column") and no tours were ever created. Fixed all INSERT sites to use `tier_required`:
+  - `scripts/seed-melbourne.ts`
+  - `app/api/generate-city/route.ts`
+  - `app/[locale]/city/[slug]/page.tsx` (background auto-gen)
+  - `app/api/build-tour/route.ts`
+  - `app/api/admin/generate-tours/route.ts`
+  - `app/api/admin/repair/route.ts`
+  - `app/api/admin/seed/route.ts`
+- **SELECTs aliased to keep the client contract.** `lib/db/queries.ts` (`getToursByCity`, `getTourById`) and `app/api/admin/diagnose/route.ts` now select `tier:tier_required` so downstream `tour.tier` keeps working. Also dropped the non-existent `duration_hours` from the `getToursByCity` SELECT.
+- **Removed `duration_hours` from the UI** (`ClientTour` type + TourCard hours badge in `CityPageClient.tsx`, and the mapping in `city/[slug]/page.tsx`).
+- **Melbourne seeded.** Finished **Eureka Skydeck** (the last of 16 stops) and generated **3 EN tours** ("Federation to Fitzroy", "Columns, Columns & Carlton", "Skyline, Shoreline & the Shrine"). ES seed run afterwards.
+- **Pushed to `master`** (commit `8838f37` for the build/leaflet/query fixes; tier_required INSERT fixes committed separately) to trigger Vercel redeploy.
+
+`npx tsc --noEmit` passes clean after all changes.
+
 ---
 
 ## Session 013 — 2026-06-06: Tour builder overhaul, locale fixes, Melbourne, bug sweep

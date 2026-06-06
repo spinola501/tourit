@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     const { data: tours } = await db
       .from("tours")
-      .select("id, title, tier")
+      .select("id, title, tier:tier_required")
       .eq("city_id", city.id);
 
     const tourDetails = [];

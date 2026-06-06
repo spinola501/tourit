@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         title: plan.title,
         tagline: plan.tagline,
         type: "prebuilt",
-        tier: "free",
+        tier_required: "free",
         cover_color: city.cover_color ?? "#1a3a5c",
         is_official: true,
       })

@@ -181,7 +181,7 @@ async function run(language: string) {
           const { data: tour, error: tourErr } = await db.from("tours").insert({
             city_id: cityRecord.id,
             title: plan.title, tagline: plan.tagline,
-            type: "prebuilt", tier: "free",
+            type: "prebuilt", tier_required: "free",
             cover_color: CITY.coverColor, is_official: true,
           }).select("id").single();
 

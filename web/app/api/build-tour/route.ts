@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     title: title ?? "Custom Tour",
     tagline: tagline ?? null,
     cover_color: coverColor ?? "#1a3a5c",
-    tier: "pro",
+    tier_required: "pro",
     type: "custom",
   }).select("id").single();
 

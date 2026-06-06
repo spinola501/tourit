@@ -94,7 +94,7 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
             title: plan.title,
             tagline: plan.tagline,
             type: "prebuilt",
-            tier: "free",
+            tier_required: "free",
             cover_color: dbCity.cover_color ?? "#1a3a5c",
             is_official: true,
           }).select("id").single();
