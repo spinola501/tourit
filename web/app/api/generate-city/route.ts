@@ -177,8 +177,7 @@ async function runGeneration(
           const { data: tour } = await db.from("tours").insert({
             city_id: cityRecord!.id,
             title: tp.title, tagline: tp.tagline,
-            theme: tp.theme, duration_hours: tp.duration_hours,
-            cover_color: planCoverColor, tier: "free",
+            cover_color: planCoverColor, tier: "free", type: "prebuilt",
           }).select("id").single();
 
           if (tour) {
