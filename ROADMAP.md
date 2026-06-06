@@ -43,7 +43,8 @@ An AI-powered audio tour app that researches and narrates the story of any place
 - [x] Zod schema validation on generation output
 - [x] Batch seed script with rate limiting + resumability (skips already-generated stops)
 - [x] Connect player to real Supabase data (replace mock)
-- [x] Pre-generate AU cities: London ✓, Sydney ✓, Darwin ✓, Melbourne ✓ (98 stops, tours regenerated with 10-stop cap)
+- [x] Pre-generate AU cities: London ✓, Sydney ✓, Darwin ✓, Melbourne ✓ (16 unique stops after dedup, 3 tours)
+- [x] DB deduplication script (`scripts/db-cleanup.ts`) — removes duplicate cities/stops/tours by normalised name; ran on production (melbourne-australia deleted, 5× Melbourne Skydeck removed)
 - [ ] ElevenLabs/cloud TTS integration — lazy audio, stored in Cloudflare R2 (deferred; Kokoro covers this for now)
 - [ ] Stop engagement analytics logging (`stop_plays` table) — table exists, logging not yet wired
 - [ ] Pre-generate Tier 1 cities: Paris, Rome, NYC, Tokyo, Barcelona (pending)
@@ -145,7 +146,7 @@ Before starting Phase 4, confirm these are done:
 - [x] NavBar locale-aware links — all hrefs use getLocale(), no more hardcoded /en
 - [x] Tier cookie DB sync — useTier hook syncs with Supabase on mount for immediate Pro recognition
 - [x] Tour builder mobile responsive — tab bar switches Stops/Route panels; multi-stop add bug fixed
-- [x] Tour builder — GPS route map (Leaflet CDN, CartoDB dark tiles, numbered markers, dashed polyline)
+- [x] Tour builder — GPS route map (Leaflet CDN, CartoDB dark tiles, numbered markers, dashed polyline); map container zero-height bug fixed (absolute inset-0 layout + stopsRef stale-closure fix)
 - [x] Tour builder — travel time estimates (Haversine + walking pace: leisurely/moderate/fast)
 - [x] Tour builder — 8 specialisation themes (History, Architecture, Gastronomy, Photography, Family, Nature, Nightlife, Standard)
 - [x] Tour builder — Export to Google Maps button; "Navigate to this stop" in TourPlayer

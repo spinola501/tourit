@@ -2,6 +2,35 @@
 
 ---
 
+## Session 016 — 2026-06-06: DB deduplication + tour builder map fix
+
+**Done:**
+
+- **`melbourne-australia` duplicate city deleted.** Ran new `scripts/db-cleanup.ts` against production DB. The duplicate city (slug `melbourne-australia`, created during an on-demand generation test) had 20 stops and 3 tours — all cascade-deleted. The real `melbourne` city (slug `melbourne`) is the only Melbourne record remaining.
+- **Melbourne Skydeck deduplicated.** The `melbourne` city had 6 stop records with the name "Melbourne Skydeck" (created across multiple seed passes). Kept the one with the most content rows (11); deleted the other 5 including their `tour_stops`, `stop_content`, and `stop_practical` rows. Melbourne now has 16 clean, unique stops.
+- **`scripts/db-cleanup.ts` added.** Reusable, idempotent script: groups cities/stops/tours by normalised name, keeps the record with the most content, deletes the rest with full cascade. Safe to re-run. Run: `npx tsx --env-file=.env.local scripts/db-cleanup.ts`.
+- **Tour builder map fixed — root cause: zero-height Leaflet container.** The map container div in `TourBuilderForm.tsx` used `flex items-center justify-center`. Because `align-items: center` prevents flex children from stretching, `RouteMap`'s `height: 100%` div collapsed to 0px. Leaflet initialised into a 0-height container and rendered blank. Fixed by switching the container to `position: relative` with the `RouteMap` wrapped in `absolute inset-0` — guarantees the map div always fills the 280px height.
+- **`RouteMap.tsx` stale-closure fix.** The one-time init effect called `redraw()` after Leaflet loaded, but `redraw` was captured from the first render's closure. Added `stopsRef` / `colorRef` refs that always point to the latest props, used exclusively by the init effect's `redrawWithRefs()`. The separate `[stops, color]` effect unchanged (gets the right closure from its dep array). Also added `requestAnimationFrame(() => map.invalidateSize())` after init so Leaflet measures the container after the browser has completed layout.
+
+**Decisions:**
+
+- Deduplication keeps the stop/city with the most associated rows (content rows for stops, stop count for cities). This favours whichever record was most fully seeded, not the oldest or shortest-slug.
+- Map container uses `relative`/`absolute inset-0` rather than adding `flex: 1` or explicit px height to the RouteMap component. This keeps the map component generic (height: 100% works correctly in any block/positioned parent) while the constraint lives in the specific layout that uses it.
+
+**Problems / Blockers:**
+
+- No new blockers introduced this session.
+- Previous Vercel build fixes (CDN Leaflet, `tier_required` column) are in production; build should be clean.
+
+**Next session:**
+
+- Begin Stripe integration — Trip Pass (€5.99/7 days) + Annual Pro (€16.99/year)
+- Stop Q&A agent (contextual chat per stop, RAG on `stop_content`, Pro only)
+- Seed Paris and Rome (both in `SEED_STOPS` but not yet generated)
+- Run "🏙 City Photos" + "📷 Stop Photos" admin buttons for all cities
+
+---
+
 ## Session 015 — 2026-06-06: Tour quality, builder fix, DB integrity & mobile
 
 **Done:**
