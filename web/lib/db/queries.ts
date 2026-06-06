@@ -15,7 +15,7 @@ export async function getToursByCity(cityId: string) {
   const { data } = await db
     .from("tours")
     .select(`
-      id, title, tagline, duration_hours, tier, cover_color,
+      id, title, tagline, tier, cover_color,
       tour_stops(count)
     `)
     .eq("city_id", cityId)

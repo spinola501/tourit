@@ -46,7 +46,6 @@ export default async function CityPage({ params }: { params: Promise<{ slug: str
     id: t.id,
     title: t.title,
     tagline: t.tagline ?? null,
-    duration_hours: (t as unknown as { duration_hours?: number }).duration_hours ?? null,
     cover_color: t.cover_color ?? null,
     tier: (t as unknown as { tier?: string }).tier ?? null,
     stop_count: (t.tour_stops as unknown as { count: number }[])?.[0]?.count ?? 0,
