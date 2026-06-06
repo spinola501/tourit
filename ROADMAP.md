@@ -43,7 +43,7 @@ An AI-powered audio tour app that researches and narrates the story of any place
 - [x] Zod schema validation on generation output
 - [x] Batch seed script with rate limiting + resumability (skips already-generated stops)
 - [x] Connect player to real Supabase data (replace mock)
-- [x] Pre-generate AU cities: London ✓, Sydney ✓, Darwin ✓ (77 stops, 847 content pieces, 100% coverage)
+- [x] Pre-generate AU cities: London ✓, Sydney ✓, Darwin ✓, Melbourne ✓ (98 stops, tours regenerated with 10-stop cap)
 - [ ] ElevenLabs/cloud TTS integration — lazy audio, stored in Cloudflare R2 (deferred; Kokoro covers this for now)
 - [ ] Stop engagement analytics logging (`stop_plays` table) — table exists, logging not yet wired
 - [ ] Pre-generate Tier 1 cities: Paris, Rome, NYC, Tokyo, Barcelona (pending)
@@ -144,17 +144,23 @@ Before starting Phase 4, confirm these are done:
 - [x] Full app audit — 31 issues identified across links, auth, schema, UX, performance; all critical/high fixed
 - [x] NavBar locale-aware links — all hrefs use getLocale(), no more hardcoded /en
 - [x] Tier cookie DB sync — useTier hook syncs with Supabase on mount for immediate Pro recognition
-- [x] Tour builder mobile responsive — tab bar switches Stops/Route panels; auto-switches on first stop added
-- [x] Tour builder — GPS route map (Leaflet, CartoDB dark tiles, numbered markers, dashed polyline)
+- [x] Tour builder mobile responsive — tab bar switches Stops/Route panels; multi-stop add bug fixed
+- [x] Tour builder — GPS route map (Leaflet CDN, CartoDB dark tiles, numbered markers, dashed polyline)
 - [x] Tour builder — travel time estimates (Haversine + walking pace: leisurely/moderate/fast)
 - [x] Tour builder — 8 specialisation themes (History, Architecture, Gastronomy, Photography, Family, Nature, Nightlife, Standard)
 - [x] Tour builder — Export to Google Maps button; "Navigate to this stop" in TourPlayer
 - [x] Stop content preview modal for Pro users on city page (all categories, loaded on demand)
-- [x] Melbourne added to seed (16 stops); admin seed supports `language` param for multilingual content
+- [x] Melbourne seeded — 21 stops, 3 EN tours, full ES content; scripts/seed-melbourne.ts for standalone seeding
 - [x] Status endpoint fixed — returns "done" only when both stops AND tours exist
 - [x] City page auto-heals — `after()` generates tours in background when stops exist but tours don't
 - [x] Email links — `APP_URL` server-only env var prevents localhost from leaking into production emails
-- [x] `theme` column bug fixed in queries — was causing all tour listings and the custom builder to fail
+- [x] `tier_required` schema fix — all tour INSERTs/SELECTs corrected; was silently rejecting all tour creation
+- [x] Tour quality enforcement — 10-stop hard cap, duplicate cleanup, oversized tour deletion script
+- [x] Tour detail page — Google Maps walking-directions link, estimated time, "Start Audio Tour" button
+- [x] Mobile scroll improvements — momentum scrolling, touch-action, lazy images, compact narration picker
+- [x] `generate-stop` retry — falls back to shorter word count if Haiku token ceiling truncates output
+- [x] `scripts/check-and-fix-tours.ts` — audits all cities, auto-generates missing tours
+- [x] Vercel build fix — Leaflet loaded from CDN (type-only npm import); eliminates Turbopack module-not-found
 
 ---
 
